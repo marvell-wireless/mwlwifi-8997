@@ -283,6 +283,26 @@ static inline void mwl_rx_prepare_status(struct mwl_rx_desc *pdesc,
 	}
 }
 
+#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
+static inline void mwl_rx_enable_sta_amsdu(struct mwl_priv *priv,
+					   u8 *sta_addr)
+{
+	struct mwl_sta *sta_info;
+	struct ieee80211_sta *sta;
+
+	spin_lock_bh(&priv->sta_lock);
+	list_for_each_entry(sta_info, &priv->sta_list, list) {
+		sta = container_of((char *)sta_info, struct ieee80211_sta,
+				   drv_priv[0]);
+		if (ether_addr_equal(sta->addr, sta_addr)) {
+			sta_info->is_amsdu_allowed = true;
+			break;
+		}
+	}
+	spin_unlock_bh(&priv->sta_lock);
+}
+#endif
+
 static inline struct mwl_vif *mwl_rx_find_vif_bss(struct mwl_priv *priv,
 						  u8 *bssid)
 {
@@ -496,6 +516,25 @@ void mwl_rx_recv(unsigned long data)
 		mwl_rx_remove_dma_header(prx_skb, curr_hndl->pdesc->qos_ctrl);
 
 		wh = (struct ieee80211_hdr *)prx_skb->data;
+
+#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
+		if (ieee80211_is_mgmt(wh->frame_control)) {
+			struct ieee80211_mgmt *mgmt;
+			__le16 capab;
+
+			mgmt = (struct ieee80211_mgmt *)prx_skb->data;
+
+			if (unlikely(ieee80211_is_action(wh->frame_control) &&
+				     mgmt->u.action.category ==
+				     WLAN_CATEGORY_BACK &&
+				     mgmt->u.action.u.addba_resp.action_code ==
+				     WLAN_ACTION_ADDBA_RESP)) {
+				capab = mgmt->u.action.u.addba_resp.capab;
+				if (le16_to_cpu(capab) & 1)
+					mwl_rx_enable_sta_amsdu(priv, mgmt->sa);
+			}
+		}
+#endif
 
 		if (ieee80211_is_data_qos(wh->frame_control)) {
 			const u8 eapol[] = {0x88, 0x8e};
