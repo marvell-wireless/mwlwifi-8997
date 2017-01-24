@@ -136,7 +136,11 @@ static void mwl_mac80211_stop(struct ieee80211_hw *hw)
 	tasklet_disable(&priv->qe_task);
 
 	/* Return all skbs to mac80211 */
-	mwl_tx_done((unsigned long)hw);
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		mwl_pfu_tx_done((unsigned long)hw);
+	} else {
+		mwl_tx_done((unsigned long)hw);
+	}
 }
 
 static int mwl_mac80211_add_interface(struct ieee80211_hw *hw,

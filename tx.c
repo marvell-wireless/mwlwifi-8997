@@ -69,6 +69,7 @@ struct ccmp_hdr {
 	__le32 iv32;
 } __packed;
 
+//#ifndef PCIE_PFU
 static int mwl_tx_ring_alloc(struct mwl_priv *priv)
 {
 	struct mwl_desc_data *desc;
@@ -127,42 +128,50 @@ static int mwl_tx_ring_alloc(struct mwl_priv *priv)
 
 	return 0;
 }
+//#endif
 
 static int mwl_tx_ring_init(struct mwl_priv *priv)
 {
-	int num, i;
+	int num;
+//#ifndef PCIE_PFU
+	int i;
 	struct mwl_desc_data *desc;
+//#endif
 
 	for (num = 0; num < SYSADPT_NUM_OF_DESC_DATA; num++) {
 		skb_queue_head_init(&priv->txq[num]);
 		priv->fw_desc_cnt[num] = 0;
 
-		desc = &priv->desc_data[num];
+//#ifndef PCIE_PFU
+		if (!IS_PFU_ENABLED(priv->chip_type)) {
+			desc = &priv->desc_data[num];
 
-		if (desc->ptx_ring) {
-			for (i = 0; i < SYSADPT_MAX_NUM_TX_DESC; i++) {
-				desc->ptx_ring[i].status =
-					cpu_to_le32(EAGLE_TXD_STATUS_IDLE);
-				desc->ptx_ring[i].pphys_next =
-					cpu_to_le32((u32)desc->pphys_tx_ring +
-					((i + 1) * sizeof(struct mwl_tx_desc)));
-				desc->tx_hndl[i].pdesc =
-					&desc->ptx_ring[i];
-				if (i < SYSADPT_MAX_NUM_TX_DESC - 1)
-					desc->tx_hndl[i].pnext =
-						&desc->tx_hndl[i + 1];
+			if (desc->ptx_ring) {
+				for (i = 0; i < SYSADPT_MAX_NUM_TX_DESC; i++) {
+					desc->ptx_ring[i].status =
+						cpu_to_le32(EAGLE_TXD_STATUS_IDLE);
+					desc->ptx_ring[i].pphys_next =
+						cpu_to_le32((u32)desc->pphys_tx_ring +
+								((i + 1) * sizeof(struct mwl_tx_desc)));
+					desc->tx_hndl[i].pdesc =
+						&desc->ptx_ring[i];
+					if (i < SYSADPT_MAX_NUM_TX_DESC - 1)
+						desc->tx_hndl[i].pnext =
+							&desc->tx_hndl[i + 1];
+				}
+				desc->ptx_ring[SYSADPT_MAX_NUM_TX_DESC - 1].pphys_next =
+					cpu_to_le32((u32)desc->pphys_tx_ring);
+				desc->tx_hndl[SYSADPT_MAX_NUM_TX_DESC - 1].pnext =
+					&desc->tx_hndl[0];
+
+				desc->pstale_tx_hndl = &desc->tx_hndl[0];
+				desc->pnext_tx_hndl  = &desc->tx_hndl[0];
+			} else {
+				wiphy_err(priv->hw->wiphy, "no valid TX mem\n");
+				return -ENOMEM;
 			}
-			desc->ptx_ring[SYSADPT_MAX_NUM_TX_DESC - 1].pphys_next =
-				cpu_to_le32((u32)desc->pphys_tx_ring);
-			desc->tx_hndl[SYSADPT_MAX_NUM_TX_DESC - 1].pnext =
-				&desc->tx_hndl[0];
-
-			desc->pstale_tx_hndl = &desc->tx_hndl[0];
-			desc->pnext_tx_hndl  = &desc->tx_hndl[0];
-		} else {
-			wiphy_err(priv->hw->wiphy, "no valid TX mem\n");
-			return -ENOMEM;
 		}
+//#endif
 	}
 
 	return 0;
@@ -171,45 +180,53 @@ static int mwl_tx_ring_init(struct mwl_priv *priv)
 static void mwl_tx_ring_cleanup(struct mwl_priv *priv)
 {
 	int cleaned_tx_desc = 0;
-	int num, i;
+	int num;
+//#ifndef PCIE_PFU
+	int i;
 	struct mwl_desc_data *desc;
+//#endif
 
 	for (num = 0; num < SYSADPT_NUM_OF_DESC_DATA; num++) {
 		skb_queue_purge(&priv->txq[num]);
 		priv->fw_desc_cnt[num] = 0;
 
-		desc = &priv->desc_data[num];
+//#ifndef PCIE_PFU
+		if (!IS_PFU_ENABLED(priv->chip_type)) {
+			desc = &priv->desc_data[num];
 
-		if (desc->ptx_ring) {
-			for (i = 0; i < SYSADPT_MAX_NUM_TX_DESC; i++) {
-				if (!desc->tx_hndl[i].psk_buff)
-					continue;
+			if (desc->ptx_ring) {
+				for (i = 0; i < SYSADPT_MAX_NUM_TX_DESC; i++) {
+					if (!desc->tx_hndl[i].psk_buff)
+						continue;
 
-				wiphy_info(priv->hw->wiphy,
-					   "unmapped and free'd %i 0x%p 0x%x\n",
-					   i,
-					   desc->tx_hndl[i].psk_buff->data,
-					   le32_to_cpu(
-					   desc->ptx_ring[i].pkt_ptr));
-				pci_unmap_single(priv->pdev,
-						 le32_to_cpu(
-						 desc->ptx_ring[i].pkt_ptr),
-						 desc->tx_hndl[i].psk_buff->len,
-						 PCI_DMA_TODEVICE);
-				dev_kfree_skb_any(desc->tx_hndl[i].psk_buff);
-				desc->ptx_ring[i].status =
-					cpu_to_le32(EAGLE_TXD_STATUS_IDLE);
-				desc->ptx_ring[i].pkt_ptr = 0;
-				desc->ptx_ring[i].pkt_len = 0;
-				desc->tx_hndl[i].psk_buff = NULL;
-				cleaned_tx_desc++;
+					wiphy_info(priv->hw->wiphy,
+							"unmapped and free'd %i 0x%p 0x%x\n",
+							i,
+							desc->tx_hndl[i].psk_buff->data,
+							le32_to_cpu(
+								desc->ptx_ring[i].pkt_ptr));
+					pci_unmap_single(priv->pdev,
+							le32_to_cpu(
+								desc->ptx_ring[i].pkt_ptr),
+							desc->tx_hndl[i].psk_buff->len,
+							PCI_DMA_TODEVICE);
+					dev_kfree_skb_any(desc->tx_hndl[i].psk_buff);
+					desc->ptx_ring[i].status =
+						cpu_to_le32(EAGLE_TXD_STATUS_IDLE);
+					desc->ptx_ring[i].pkt_ptr = 0;
+					desc->ptx_ring[i].pkt_len = 0;
+					desc->tx_hndl[i].psk_buff = NULL;
+					cleaned_tx_desc++;
+				}
 			}
 		}
+//#endif
 	}
 
 	wiphy_info(priv->hw->wiphy, "cleaned %i TX descr\n", cleaned_tx_desc);
 }
 
+//#ifndef PCIE_PFU
 static void mwl_tx_ring_free(struct mwl_priv *priv)
 {
 	int num;
@@ -231,16 +248,20 @@ static void mwl_tx_ring_free(struct mwl_priv *priv)
 
 	kfree(priv->desc_data[0].tx_hndl);
 }
+//#endif
 
 static inline void mwl_tx_add_dma_header(struct mwl_priv *priv,
 					 struct sk_buff *skb,
 					 int head_pad,
 					 int tail_pad)
 {
-	struct ieee80211_hdr *wh;
+	struct ieee80211_hdr *wh, *tr_wh_ptr;
 	int hdrlen;
-	int reqd_hdrlen;
-	struct mwl_dma_data *tr;
+	int reqd_hdrlen, dma_hdr_len;
+	__le16 *tr_fwlen_ptr;
+	dma_hdr_len = (IS_PFU_ENABLED(priv->chip_type)?
+		sizeof(struct mwl_tx_pfu_dma_data) : 
+		sizeof(struct mwl_dma_data));
 
 	/* Add a firmware DMA header; the firmware requires that we
 	 * present a 2-byte payload length followed by a 4-address
@@ -250,28 +271,40 @@ static inline void mwl_tx_add_dma_header(struct mwl_priv *priv,
 	wh = (struct ieee80211_hdr *)skb->data;
 
 	hdrlen = ieee80211_hdrlen(wh->frame_control);
+//	wiphy_err(priv->hw->wiphy, "%s() hdrlen=%d\n", __FUNCTION__, hdrlen);
 
-	reqd_hdrlen = sizeof(*tr) + head_pad;
+	reqd_hdrlen = dma_hdr_len + head_pad;
+//	wiphy_err(priv->hw->wiphy, "reqd_hdrlen=%d\n", reqd_hdrlen);
 
-	if (hdrlen != reqd_hdrlen)
+	if (hdrlen != reqd_hdrlen){
 		skb_push(skb, reqd_hdrlen - hdrlen);
+	}
 
 	if (ieee80211_is_data_qos(wh->frame_control))
 		hdrlen -= IEEE80211_QOS_CTL_LEN;
 
-	tr = (struct mwl_dma_data *)skb->data;
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		struct mwl_tx_pfu_dma_data *tr = (struct mwl_tx_pfu_dma_data *)skb->data;
+		tr_wh_ptr = &tr->wh;
+		tr_fwlen_ptr = &tr->fwlen;
+	} else {
+		struct mwl_dma_data *tr = (struct mwl_dma_data *)skb->data;
+		tr_wh_ptr = &tr->wh;
+		tr_fwlen_ptr = &tr->fwlen;
+	}
 
-	if (wh != &tr->wh)
-		memmove(&tr->wh, wh, hdrlen);
+	if (wh != tr_wh_ptr)
+		memmove(tr_wh_ptr, wh, hdrlen);
 
-	if (hdrlen != sizeof(tr->wh))
-		memset(((void *)&tr->wh) + hdrlen, 0, sizeof(tr->wh) - hdrlen);
+	if (hdrlen != sizeof(struct ieee80211_hdr))
+		memset(((void *)tr_wh_ptr) + hdrlen, 0,
+			sizeof(struct ieee80211_hdr) - hdrlen);
 
 	/* Firmware length is the length of the fully formed "802.11
 	 * payload".  That is, everything except for the 802.11 header.
 	 * This includes all crypto material including the MIC.
 	 */
-	tr->fwlen = cpu_to_le16(skb->len - sizeof(*tr) + tail_pad);
+	*tr_fwlen_ptr = cpu_to_le16(skb->len - dma_hdr_len + tail_pad);
 }
 
 static inline void mwl_tx_encapsulate_frame(struct mwl_priv *priv,
@@ -403,6 +436,7 @@ static inline void mwl_tx_count_packet(struct ieee80211_sta *sta, u8 tid)
 	}
 }
 
+//#ifndef PCIE_PFU
 static inline bool mwl_tx_available(struct mwl_priv *priv, int desc_num)
 {
 	struct mwl_tx_hndl *tx_hndl;
@@ -424,22 +458,30 @@ static inline bool mwl_tx_available(struct mwl_priv *priv, int desc_num)
 
 	return true;
 }
+//#endif
 
 static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 			      struct sk_buff *tx_skb)
 {
 	struct ieee80211_tx_info *tx_info;
 	struct mwl_tx_ctrl *tx_ctrl;
-	struct mwl_tx_hndl *tx_hndl;
-	struct mwl_tx_desc *tx_desc;
+	struct mwl_tx_desc *tx_desc = NULL;
 	struct ieee80211_sta *sta;
 	struct ieee80211_vif *vif;
 	struct mwl_vif *mwl_vif;
 	struct ieee80211_key_conf *k_conf;
 	bool ccmp = false;
-	struct mwl_dma_data *dma_data;
+//	int ret;
+//#ifdef PCIE_PFU
+	unsigned int wrindx;
+	const t_u32 num_tx_buffs = MLAN_MAX_TXRX_BD << PCIE_TX_START_PTR;
+//#else
+	struct mwl_tx_hndl *tx_hndl;
+//#endif
+
 	struct ieee80211_hdr *wh;
 	dma_addr_t dma;
+	char *dma_data_pload;
 
 	if (WARN_ON(!tx_skb))
 		return;
@@ -453,8 +495,17 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 
 	mwl_tx_encapsulate_frame(priv, tx_skb, k_conf, &ccmp);
 
-	dma_data = (struct mwl_dma_data *)tx_skb->data;
-	wh = &dma_data->wh;
+
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		struct mwl_tx_pfu_dma_data *dma_data = (struct mwl_tx_pfu_dma_data *)tx_skb->data;
+		wh = &dma_data->wh;
+		tx_desc = &dma_data->tx_desc;
+		dma_data_pload = dma_data->data;
+	} else {
+		struct mwl_dma_data *dma_data = (struct mwl_dma_data *)tx_skb->data;
+		wh = &dma_data->wh;
+		dma_data_pload = dma_data->data;
+	}
 
 	if (ieee80211_is_data(wh->frame_control) ||
 	    (ieee80211_is_mgmt(wh->frame_control) &&
@@ -462,7 +513,7 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 	    !is_multicast_ether_addr(wh->addr1))) {
 		if (is_multicast_ether_addr(wh->addr1)) {
 			if (ccmp) {
-				mwl_tx_insert_ccmp_hdr(dma_data->data,
+				mwl_tx_insert_ccmp_hdr(dma_data_pload,
 						       mwl_vif->keyidx,
 						       mwl_vif->iv16,
 						       mwl_vif->iv32);
@@ -471,7 +522,7 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 		} else {
 			if (ccmp) {
 				if (vif->type == NL80211_IFTYPE_STATION) {
-					mwl_tx_insert_ccmp_hdr(dma_data->data,
+					mwl_tx_insert_ccmp_hdr(dma_data_pload,
 							       mwl_vif->keyidx,
 							       mwl_vif->iv16,
 							       mwl_vif->iv32);
@@ -482,7 +533,7 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 
 					sta_info = mwl_dev_get_sta(sta);
 
-					mwl_tx_insert_ccmp_hdr(dma_data->data,
+					mwl_tx_insert_ccmp_hdr(dma_data_pload,
 							       0,
 							       sta_info->iv16,
 							       sta_info->iv32);
@@ -493,9 +544,14 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 		}
 	}
 
-	tx_hndl = priv->desc_data[desc_num].pnext_tx_hndl;
-	tx_hndl->psk_buff = tx_skb;
-	tx_desc = tx_hndl->pdesc;
+//#ifndef PCIE_PFU
+	if (!IS_PFU_ENABLED(priv->chip_type)) {
+		tx_hndl = priv->desc_data[desc_num].pnext_tx_hndl;
+		tx_hndl->psk_buff = tx_skb;
+		tx_desc = tx_hndl->pdesc;
+	}
+//#endif
+
 	tx_desc->tx_priority = tx_ctrl->tx_priority;
 	tx_desc->qos_ctrl = cpu_to_le16(tx_ctrl->qos_ctrl);
 	tx_desc->pkt_len = cpu_to_le16(tx_skb->len);
@@ -504,22 +560,87 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 	tx_desc->type = tx_ctrl->type;
 	tx_desc->xmit_control = tx_ctrl->xmit_control;
 	tx_desc->sap_pkt_info = 0;
+
 	dma = pci_map_single(priv->pdev, tx_skb->data,
 			     tx_skb->len, PCI_DMA_TODEVICE);
+
+#if 0
+	wiphy_err(priv->hw->wiphy, "map: skb=%p vdata=%p pdata=%p plen=%d!\n",
+			tx_skb,
+			tx_skb->data,
+			dma,
+			tx_skb->len);
+#endif
+
 	if (pci_dma_mapping_error(priv->pdev, dma)) {
 		dev_kfree_skb_any(tx_skb);
 		wiphy_err(priv->hw->wiphy,
 			  "failed to map pci memory!\n");
 		return;
 	}
+
+//#ifdef PCIE_PFU
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		tx_desc->pkt_ptr = sizeof(struct mwl_tx_desc);
+	} else {
+//#else
 	tx_desc->pkt_ptr = cpu_to_le32(dma);
+	}
+//#endif
 	tx_desc->status = cpu_to_le32(EAGLE_TXD_STATUS_FW_OWNED);
 	/* make sure all the memory transactions done by cpu were completed */
 	wmb();	/*Data Memory Barrier*/
-	writel(MACREG_H2ARIC_BIT_PPA_READY,
-	       priv->iobase1 + MACREG_REG_H2A_INTERRUPT_EVENTS);
-	priv->desc_data[desc_num].pnext_tx_hndl = tx_hndl->pnext;
-	priv->fw_desc_cnt[desc_num]++;
+
+//#ifdef PCIE_PFU
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		wrindx = (priv->txbd_wrptr & MLAN_TXBD_MASK) >> PCIE_TX_START_PTR;
+		//        wiphy_err(priv->hw->wiphy,  "SEND DATA: Attach pmbuf %p at txbd_wridx=%d\n", tx_skb, wrindx);
+		priv->tx_buf_list[wrindx] = tx_skb;
+		priv->txbd_ring[wrindx]->paddr = dma;
+		priv->txbd_ring[wrindx]->len = (t_u16)tx_skb->len;
+		priv->txbd_ring[wrindx]->flags = MLAN_BD_FLAG_FIRST_DESC |
+			MLAN_BD_FLAG_LAST_DESC;
+
+		priv->txbd_ring[wrindx]->frag_len = (t_u16)tx_skb->len;
+		priv->txbd_ring[wrindx]->offset = 0;
+		priv->txbd_wrptr += MLAN_BD_FLAG_TX_START_PTR;
+
+		if ((priv->txbd_wrptr & MLAN_TXBD_MASK) == num_tx_buffs)
+			priv->txbd_wrptr = ((priv->txbd_wrptr &
+						MLAN_BD_FLAG_TX_ROLLOVER_IND) ^
+					MLAN_BD_FLAG_TX_ROLLOVER_IND);
+
+		/* Write the TX ring write pointer in to REG_TXBD_WRPTR */
+		writel(priv->txbd_wrptr, priv->iobase1 + REG_TXBD_WRPTR);
+
+#if 0
+		wiphy_err(priv->hw->wiphy,  "SEND DATA: Updated <Rd: %#x, Wr: %#x>\n",
+				priv->txbd_rdptr, priv->txbd_wrptr);
+#endif
+
+#if 0
+		if (pcb->moal_read_reg(pmadapter->pmoal_handle,
+					REG_TXBD_WRPTR, &txbd_wrptr) != MLAN_STATUS_SUCCESS) {
+			wiphy_err(hw->wiphy,  "SEND DATA: failed to read back REG_TXBD_WRPTR\n");
+			ret = MLAN_STATUS_FAILURE;
+			goto done_unmap;
+		}
+		wiphy_err(hw->wiphy,  "SEND DATA: read back REG_TXBD_WRPTR (0x%x) = 0x%x\n", 
+				REG_TXBD_WRPTR, txbd_wrptr);
+
+		if ( PCIE_TXBD_NOT_FULL(pmadapter->txbd_wrptr, pmadapter->txbd_rdptr))
+			pmadapter->data_sent = MFALSE;
+#endif
+
+	} else {
+//#else
+		writel(MACREG_H2ARIC_BIT_PPA_READY,
+				priv->iobase1 + MACREG_REG_H2A_INTERRUPT_EVENTS);
+		priv->desc_data[desc_num].pnext_tx_hndl = tx_hndl->pnext;
+		priv->fw_desc_cnt[desc_num]++;
+	}
+//#endif
+
 }
 
 static inline struct sk_buff *mwl_tx_do_amsdu(struct mwl_priv *priv,
@@ -538,9 +659,12 @@ static inline struct sk_buff *mwl_tx_do_amsdu(struct mwl_priv *priv,
 	int wh_len;
 	u16 len;
 	u8 *data;
+	t_u32 headroom;
 
 	sta = (struct ieee80211_sta *)tx_ctrl->sta;
 	sta_info = mwl_dev_get_sta(sta);
+
+//	printk(KERN_ALERT "%s() skb=%p\n", __FUNCTION__, tx_skb);
 
 	if (!sta_info->is_amsdu_allowed)
 		return tx_skb;
@@ -560,6 +684,7 @@ static inline struct sk_buff *mwl_tx_do_amsdu(struct mwl_priv *priv,
 	amsdu = &sta_info->amsdu_ctrl.frag[desc_num];
 
 	if (tx_skb->len > SYSADPT_AMSDU_ALLOW_SIZE) {
+//		printk(KERN_ALERT "(1) len=%d a->num=%d\n", tx_skb->len, amsdu->num);
 		if (amsdu->num) {
 			mwl_tx_skb(priv, desc_num, amsdu->skb);
 			amsdu->num = 0;
@@ -575,6 +700,7 @@ static inline struct sk_buff *mwl_tx_do_amsdu(struct mwl_priv *priv,
 	wh_len = ieee80211_hdrlen(wh->frame_control);
 	len = tx_skb->len - wh_len + 17;
 
+//	printk(KERN_ALERT "(2) len=%d a->num=%d\n", tx_skb->len, amsdu->num);
 	if (amsdu->num) {
 		if ((amsdu->skb->len + len) > amsdu_allow_size) {
 			mwl_tx_skb(priv, desc_num, amsdu->skb);
@@ -596,11 +722,18 @@ static inline struct sk_buff *mwl_tx_do_amsdu(struct mwl_priv *priv,
 			return tx_skb;
 		}
 		newskb = dev_alloc_skb(amsdu_allow_size +
-				       SYSADPT_MIN_BYTES_HEADROOM);
+				       SYSADPT_TX_MIN_BYTES_HEADROOM);
 		if (!newskb) {
 			spin_unlock_bh(&sta_info->amsdu_lock);
 			kfree(amsdu_pkts);
 			return tx_skb;
+		}
+
+		headroom = skb_headroom(newskb);
+		if (headroom < SYSADPT_TX_MIN_BYTES_HEADROOM)
+		{    
+			//    wiphy_err(priv->hw->wiphy, "INCR reserve hroom %d -> %d\n", headroom, SYSADPT_TX_MIN_BYTES_HEADROOM);
+			skb_reserve(newskb, (SYSADPT_TX_MIN_BYTES_HEADROOM - headroom));
 		}
 
 		data = newskb->data;
@@ -740,18 +873,34 @@ int mwl_tx_init(struct ieee80211_hw *hw)
 
 	skb_queue_head_init(&priv->delay_q);
 
-	rc = mwl_tx_ring_alloc(priv);
-	if (rc) {
-		wiphy_err(hw->wiphy, "allocating TX ring failed\n");
-		return rc;
+//#ifdef PCIE_PFU
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		rc = wlan_pcie_create_txbd_ring(hw);
+		if (rc) {
+			wiphy_err(hw->wiphy, "wlan_pcie_create_txbd_ring() failed\n");
+			return rc;
+		}
+	} else {
+//#else
+		rc = mwl_tx_ring_alloc(priv);
+		if (rc) {
+			wiphy_err(hw->wiphy, "allocating TX ring failed\n");
+			return rc;
+		}
 	}
+//#endif
 
 	rc = mwl_tx_ring_init(priv);
-	if (rc) {
-		mwl_tx_ring_free(priv);
-		wiphy_err(hw->wiphy, "initializing TX ring failed\n");
-		return rc;
+
+//#ifndef PCIE_PFU
+	if (!IS_PFU_ENABLED(priv->chip_type)) {
+		if (rc) {
+			mwl_tx_ring_free(priv);
+			wiphy_err(hw->wiphy, "initializing TX ring failed\n");
+			return rc;
+		}
 	}
+//#endif
 
 	return 0;
 }
@@ -763,8 +912,22 @@ void mwl_tx_deinit(struct ieee80211_hw *hw)
 	skb_queue_purge(&priv->delay_q);
 
 	mwl_tx_ring_cleanup(priv);
-	mwl_tx_ring_free(priv);
+
+//#ifdef PCIE_PFU
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		wlan_pcie_delete_txbd_ring(hw);
+	} else {
+//#else
+		mwl_tx_ring_free(priv);
+	}
+//#endif
+
 }
+
+
+#if 0
+int tx_mgmt, tx_data;
+#endif
 
 void mwl_tx_xmit(struct ieee80211_hw *hw,
 		 struct ieee80211_tx_control *control,
@@ -788,6 +951,9 @@ void mwl_tx_xmit(struct ieee80211_hw *hw,
 	struct mwl_tx_ctrl *tx_ctrl;
 	struct ieee80211_key_conf *k_conf = NULL;
 
+
+//printk(KERN_ALERT "%s() called #mgmt=%d, #data=%d (%d | %d)\n", __FUNCTION__,tx_mgmt, tx_data, dbg_map_cnt, dbg_unmap_cnt);
+
 	index = skb_get_queue_mapping(skb);
 	sta = control->sta;
 
@@ -807,6 +973,14 @@ void mwl_tx_xmit(struct ieee80211_hw *hw,
 		mgmtframe = true;
 		mgmt = (struct ieee80211_mgmt *)skb->data;
 	}
+
+#if 0
+	if (ieee80211_is_mgmt(wh->frame_control)) {
+		tx_mgmt++;
+	} else {
+		tx_data++;
+	}
+#endif
 
 	tx_info = IEEE80211_SKB_CB(skb);
 	mwl_vif = mwl_dev_get_vif(tx_info->control.vif);
@@ -1074,14 +1248,29 @@ void mwl_tx_skbs(unsigned long data)
 	int num = SYSADPT_TX_WMM_QUEUES;
 	struct sk_buff *tx_skb;
 
+    struct mwl_sta *sta_info;
+
+//printk(KERN_ALERT "%s() called\n", __FUNCTION__);
+
+#if 0
+printk(KERN_ALERT "wrptr=0x%x, rdptr=0x%x not_full=%d\n", 
+		priv->txbd_wrptr, priv->txbd_rdptr,
+		PCIE_TXBD_NOT_FULL(priv->txbd_wrptr, priv->txbd_rdptr));
+#endif
+
 	spin_lock_bh(&priv->tx_desc_lock);
 	while (num--) {
 		while (skb_queue_len(&priv->txq[num]) > 0) {
 			struct ieee80211_tx_info *tx_info;
 			struct mwl_tx_ctrl *tx_ctrl;
 
-			if (!mwl_tx_available(priv, num))
+//#ifdef PCIE_PFU
+			if ((IS_PFU_ENABLED(priv->chip_type) && (!PCIE_TXBD_NOT_FULL(priv->txbd_wrptr, priv->txbd_rdptr))) ||
+//#else
+					(!IS_PFU_ENABLED(priv->chip_type) && (!mwl_tx_available(priv, num)))) {
+//#endif
 				break;
+			}
 
 			tx_skb = skb_dequeue(&priv->txq[num]);
 			tx_info = IEEE80211_SKB_CB(tx_skb);
@@ -1094,12 +1283,47 @@ void mwl_tx_skbs(unsigned long data)
 			}
 
 			if (tx_skb) {
-				if (mwl_tx_available(priv, num))
+//#ifdef PCIE_PFU
+				if ((IS_PFU_ENABLED(priv->chip_type) && (PCIE_TXBD_NOT_FULL(priv->txbd_wrptr, priv->txbd_rdptr))) ||
+//#else
+						(!IS_PFU_ENABLED(priv->chip_type) && (mwl_tx_available(priv, num)))) {
+//#endif
 					mwl_tx_skb(priv, num, tx_skb);
+				}
 				else
+				{
+                    // skb consumed. Marking as NULL. This code is not intended 
+                    // to be executed. If it gets executed, following will 
+                    // happen - tx_skb can contain an amsdu, which will get 
+                    // added to queue head updating the queue length, and the 
+                    // while () loop will never terminate...
 					skb_queue_head(&priv->txq[num], tx_skb);
+				}
 			}
 		}
+
+
+    	spin_lock(&priv->sta_lock);
+
+    	list_for_each_entry(sta_info, &priv->sta_list, list) {
+
+        	spin_lock_bh(&sta_info->amsdu_lock);
+
+			if (sta_info->amsdu_ctrl.frag[num].num) {
+//#ifdef PCIE_PFU
+				if ((IS_PFU_ENABLED(priv->chip_type) && (PCIE_TXBD_NOT_FULL(priv->txbd_wrptr, priv->txbd_rdptr))) ||
+//#else
+						(!IS_PFU_ENABLED(priv->chip_type) && (mwl_tx_available(priv, num)))) {
+//#endif
+					mwl_tx_skb(priv, num, sta_info->amsdu_ctrl.frag[num].skb);
+					sta_info->amsdu_ctrl.frag[num].num = 0;
+					sta_info->amsdu_ctrl.frag[num].cur_pos = NULL;
+				}
+			}
+        	spin_unlock_bh(&sta_info->amsdu_lock);
+
+		}
+    	spin_unlock(&priv->sta_lock);
 
 		if (skb_queue_len(&priv->txq[num]) <
 		    SYSADPT_TX_WAKE_Q_THRESHOLD) {
@@ -1113,6 +1337,141 @@ void mwl_tx_skbs(unsigned long data)
 	spin_unlock_bh(&priv->tx_desc_lock);
 }
 
+//#ifdef PCIE_PFU
+void mwl_tx_complete_skb(struct sk_buff *done_skb, mlan_pcie_data_buf *tx_ring_entry, struct ieee80211_hw *hw);
+
+void mwl_pfu_tx_done(unsigned long data)
+{
+	struct ieee80211_hw *hw = (struct ieee80211_hw *)data;
+	struct mwl_priv *priv = hw->priv;
+	struct sk_buff *done_skb;
+	u32 wrdoneidx, rdptr;
+        const t_u32 num_tx_buffs = MLAN_MAX_TXRX_BD << PCIE_TX_START_PTR;
+
+	spin_lock_bh(&priv->tx_desc_lock);
+
+    /* Read the TX ring read pointer set by firmware */
+    rdptr = readl(priv->iobase1 + REG_TXBD_RDPTR);
+
+#if 0
+    wiphy_err(hw->wiphy,  "SEND DATA COMP:  rdptr_prev=0x%x, rdptr=0x%x\n",
+           priv->txbd_rdptr, rdptr);
+#endif
+
+    /* free from previous txbd_rdptr to current txbd_rdptr */
+    while ( ((priv->txbd_rdptr & MLAN_TXBD_MASK)
+               != (rdptr & MLAN_TXBD_MASK))
+         || ((priv->txbd_rdptr & MLAN_BD_FLAG_TX_ROLLOVER_IND)
+               != (rdptr & MLAN_BD_FLAG_TX_ROLLOVER_IND)) ) {
+        wrdoneidx = priv->txbd_rdptr & MLAN_TXBD_MASK;
+        wrdoneidx >>= PCIE_TX_START_PTR;
+
+        done_skb = priv->tx_buf_list[wrdoneidx];
+        if (done_skb ) {
+            mwl_tx_complete_skb(done_skb, priv->txbd_ring[wrdoneidx], hw);
+        }
+
+        priv->tx_buf_list[wrdoneidx] = MNULL;
+        priv->txbd_ring[wrdoneidx]->paddr = 0;
+        priv->txbd_ring[wrdoneidx]->len = 0;
+        priv->txbd_ring[wrdoneidx]->flags = 0;
+        priv->txbd_ring[wrdoneidx]->frag_len = 0;
+        priv->txbd_ring[wrdoneidx]->offset = 0;
+        priv->txbd_rdptr += MLAN_BD_FLAG_TX_START_PTR;
+        if ((priv->txbd_rdptr & MLAN_TXBD_MASK) == num_tx_buffs)
+            priv->txbd_rdptr = ((priv->txbd_rdptr &
+                                      MLAN_BD_FLAG_TX_ROLLOVER_IND) ^
+                                      MLAN_BD_FLAG_TX_ROLLOVER_IND);
+    }
+
+    spin_unlock_bh(&priv->tx_desc_lock);
+
+    if (priv->is_tx_done_schedule) {
+        u32 status_mask;
+
+        status_mask = readl(priv->iobase1 +
+            MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
+        writel(status_mask | MACREG_A2HRIC_BIT_TX_DONE,
+            priv->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
+
+        tasklet_schedule(&priv->tx_task);
+        priv->is_tx_done_schedule = false;
+    }    
+}
+
+void mwl_tx_complete_skb(struct sk_buff *done_skb, mlan_pcie_data_buf *tx_ring_entry, struct ieee80211_hw *hw)
+{
+    struct mwl_tx_desc *tx_desc;
+    struct mwl_priv *priv = hw->priv;
+    struct ieee80211_tx_info *info;
+    struct mwl_tx_ctrl *tx_ctrl;
+    struct sk_buff_head *amsdu_pkts;
+    u32 rate;
+    struct mwl_tx_pfu_dma_data *tr = (struct mwl_tx_pfu_dma_data *)done_skb->data;
+    int hdrlen;
+
+    tx_desc = &tr->tx_desc;
+
+#if 0
+	wiphy_err(priv->hw->wiphy, "unmap: skb=%p vdata=%p pdata=%p plen=%d!\n",
+			done_skb,
+			done_skb->data,
+			tx_ring_entry->paddr,
+			tx_ring_entry->len);
+#endif
+
+    pci_unmap_single(priv->pdev,
+		    tx_ring_entry->paddr,
+		    tx_ring_entry->len,
+                 PCI_DMA_TODEVICE);
+
+#if 0
+    rate = le32_to_cpu(tx_desc->rate_info);
+#else
+    rate = 0;
+#endif
+
+    tx_desc->pkt_ptr = 0;
+    tx_desc->pkt_len = 0;
+    tx_desc->status = cpu_to_le32(EAGLE_TXD_STATUS_IDLE);
+    wmb(); /* memory barrier */
+
+    skb_get(done_skb);
+    skb_queue_tail(&priv->delay_q, done_skb);
+    if (skb_queue_len(&priv->delay_q) > SYSADPT_DELAY_FREE_Q_LIMIT)
+        dev_kfree_skb_any(skb_dequeue(&priv->delay_q));
+
+    info = IEEE80211_SKB_CB(done_skb);
+
+    if (ieee80211_is_data(tr->wh.frame_control) ||
+            ieee80211_is_data_qos(tr->wh.frame_control)) {
+        tx_ctrl = (struct mwl_tx_ctrl *)&info->status;
+        amsdu_pkts = (struct sk_buff_head *)
+        tx_ctrl->amsdu_pkts;
+        
+        if (amsdu_pkts) {
+            mwl_tx_ack_amsdu_pkts(hw, rate,
+            		      amsdu_pkts);
+            dev_kfree_skb_any(done_skb);
+            done_skb = NULL;
+        } else {
+            mwl_tx_prepare_info(hw, rate, info);
+        }
+    } else {
+        mwl_tx_prepare_info(hw, 0, info);
+    }
+
+    if (done_skb) {
+        /* Remove H/W dma header */
+        hdrlen = ieee80211_hdrlen(tr->wh.frame_control);
+        memmove(tr->data - hdrlen, &tr->wh, hdrlen);
+        skb_pull(done_skb, sizeof(*tr) - hdrlen);
+        info->flags &= ~IEEE80211_TX_CTL_AMPDU;
+        info->flags |= IEEE80211_TX_STAT_ACK;
+        ieee80211_tx_status(hw, done_skb);
+    }
+}
+//#else
 void mwl_tx_done(unsigned long data)
 {
 	struct ieee80211_hw *hw = (struct ieee80211_hw *)data;
@@ -1215,6 +1574,7 @@ void mwl_tx_done(unsigned long data)
 		priv->is_tx_done_schedule = false;
 	}
 }
+//#endif
 
 void mwl_tx_flush_amsdu(unsigned long data)
 {
@@ -1234,7 +1594,13 @@ void mwl_tx_flush_amsdu(unsigned long data)
 			if (amsdu_frag->num) {
 				if (time_after(jiffies,
 					       (amsdu_frag->jiffies + 1))) {
-					if (mwl_tx_available(priv, i)) {
+//#ifdef PCIE_PFU
+					if (((IS_PFU_ENABLED(priv->chip_type)) && (PCIE_TXBD_NOT_FULL(priv->txbd_wrptr, priv->txbd_rdptr))) || 
+	
+//#else
+						((!IS_PFU_ENABLED(priv->chip_type)) && (mwl_tx_available(priv, i)))) {
+//#endif
+//						wiphy_err(priv->hw->wiphy, "%s()\n", __FUNCTION__);
 						mwl_tx_skb(priv, i,
 							   amsdu_frag->skb);
 						amsdu_frag->num = 0;

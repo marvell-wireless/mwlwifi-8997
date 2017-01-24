@@ -394,35 +394,40 @@ static ssize_t mwl_debugfs_tx_desc_read(struct file *file,
 					char __user *ubuf,
 					size_t count, loff_t *ppos)
 {
+	ssize_t ret = 0;
+//#ifndef PCIE_PFU
 	struct mwl_priv *priv = (struct mwl_priv *)file->private_data;
-	unsigned long page = get_zeroed_page(GFP_KERNEL);
-	char *p = (char *)page;
 	int len = 0, size = PAGE_SIZE;
 	struct mwl_desc_data *desc;
 	int i, num, write_item = -1, free_item = -1;
-	ssize_t ret;
 
-	spin_lock_bh(&priv->tx_desc_lock);
-	num = priv->tx_desc_num;
-	desc = &priv->desc_data[num];
-	len += scnprintf(p + len, size - len, "num: %i fw_desc_cnt:%i\n",
-			 num, priv->fw_desc_cnt[num]);
-	for (i = 0; i < SYSADPT_MAX_NUM_TX_DESC; i++) {
-		len += scnprintf(p + len, size - len, "%3i %x\n", i,
-				 desc->tx_hndl[i].pdesc->status);
-		if (desc->pnext_tx_hndl == &desc->tx_hndl[i])
-			write_item = i;
-		if (desc->pstale_tx_hndl == &desc->tx_hndl[i])
-			free_item = i;
+	if (!IS_PFU_ENABLED(priv->chip_type)) {
+		unsigned long page = get_zeroed_page(GFP_KERNEL);
+		char *p = (char *)page;
+
+		spin_lock_bh(&priv->tx_desc_lock);
+		num = priv->tx_desc_num;
+		desc = &priv->desc_data[num];
+		len += scnprintf(p + len, size - len, "num: %i fw_desc_cnt:%i\n",
+				num, priv->fw_desc_cnt[num]);
+		for (i = 0; i < SYSADPT_MAX_NUM_TX_DESC; i++) {
+			len += scnprintf(p + len, size - len, "%3i %x\n", i,
+					desc->tx_hndl[i].pdesc->status);
+			if (desc->pnext_tx_hndl == &desc->tx_hndl[i])
+				write_item = i;
+			if (desc->pstale_tx_hndl == &desc->tx_hndl[i])
+				free_item = i;
+		}
+		len += scnprintf(p + len, size - len, "next:%i stale:%i\n",
+				write_item, free_item);
+		len += scnprintf(p + len, size - len, "\n");
+		spin_unlock_bh(&priv->tx_desc_lock);
+
+		ret = simple_read_from_buffer(ubuf, count, ppos, p, len);
+		free_page(page);
 	}
-	len += scnprintf(p + len, size - len, "next:%i stale:%i\n",
-			 write_item, free_item);
-	len += scnprintf(p + len, size - len, "\n");
-	spin_unlock_bh(&priv->tx_desc_lock);
 
-	ret = simple_read_from_buffer(ubuf, count, ppos, p, len);
-	free_page(page);
-
+//#endif
 	return ret;
 }
 

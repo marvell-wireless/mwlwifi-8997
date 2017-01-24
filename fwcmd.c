@@ -162,6 +162,10 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 			priv->in_send_cmd = false;
 			return -EIO;
 		}
+		else
+		{
+			wiphy_err(priv->hw->wiphy, "CMDDOWNLOADED: 0x%04x\n", cmd);
+		}
 	} else {
 		wiphy_warn(priv->hw->wiphy,
 			   "previous command is still running\n");
@@ -994,7 +998,9 @@ int mwl_fwcmd_set_hw_specs(struct ieee80211_hw *hw)
 {
 	struct mwl_priv *priv = hw->priv;
 	struct hostcmd_cmd_set_hw_spec *pcmd;
+//#ifndef PCIE_PFU
 	int i;
+//#endif
 
 	pcmd = (struct hostcmd_cmd_set_hw_spec *)&priv->pcmd_buf[0];
 
@@ -1003,12 +1009,31 @@ int mwl_fwcmd_set_hw_specs(struct ieee80211_hw *hw)
 	memset(pcmd, 0x00, sizeof(*pcmd));
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_HW_SPEC);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
-	pcmd->wcb_base[0] = cpu_to_le32(priv->desc_data[0].pphys_tx_ring);
-	for (i = 1; i < SYSADPT_TOTAL_TX_QUEUES; i++)
-		pcmd->wcb_base[i] =
-			cpu_to_le32(priv->desc_data[i].pphys_tx_ring);
-	pcmd->tx_wcb_num_per_queue = cpu_to_le32(SYSADPT_MAX_NUM_TX_DESC);
-	pcmd->num_tx_queues = cpu_to_le32(SYSADPT_NUM_OF_DESC_DATA);
+
+//#ifdef PCIE_PFU
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		pcmd->wcb_base[0] = (t_u32)cpu_to_le32(priv->txbd_ring_pbase);
+//		  host_spec.txbd_addr_hi = (t_u32)(((t_u64)pmadapter->txbd_ring_pbase)>>32);
+	} else {
+//#else
+		pcmd->wcb_base[0] = cpu_to_le32(priv->desc_data[0].pphys_tx_ring);
+		for (i = 1; i < SYSADPT_TOTAL_TX_QUEUES; i++)
+			pcmd->wcb_base[i] =
+				cpu_to_le32(priv->desc_data[i].pphys_tx_ring);
+	}
+//#endif
+
+//#ifdef PCIE_PFU
+	if (IS_PFU_ENABLED(priv->chip_type)) {
+		pcmd->tx_wcb_num_per_queue = cpu_to_le32(MLAN_MAX_TXRX_BD);
+		pcmd->num_tx_queues = cpu_to_le32(SYSADPT_PFU_NUM_OF_DESC_DATA);
+	} else {
+//#else
+		pcmd->tx_wcb_num_per_queue = cpu_to_le32(SYSADPT_MAX_NUM_TX_DESC);
+		pcmd->num_tx_queues = cpu_to_le32(SYSADPT_NUM_OF_DESC_DATA);
+	}
+//#endif
+
 	pcmd->total_rx_wcb = cpu_to_le32(SYSADPT_MAX_NUM_RX_DESC);
 	pcmd->rxpd_wr_ptr = cpu_to_le32(priv->desc_data[0].pphys_rx_ring);
 	pcmd->features = 0;
@@ -2387,6 +2412,18 @@ int mwl_fwcmd_encryption_set_key(struct ieee80211_hw *hw,
 		action = ENCR_ACTION_TYPE_SET_KEY;
 	else
 		action = ENCR_ACTION_TYPE_SET_GROUP_KEY;
+
+//TODO: This code is missing in git ToT now
+#if 0
+{
+		action = ENCR_ACTION_TYPE_SET_GROUP_KEY;
+
+		//if (vif->type == NL80211_IFTYPE_MESH_POINT &&
+		//    !ether_addr_equal(mwl_vif->bssid, addr))
+ 			pcmd->key_param.key_info |=
+ 				cpu_to_le32(ENCR_KEY_FLAG_RXGROUPKEY);
+}
+#endif
 
 	switch (key->cipher) {
 	case WLAN_CIPHER_SUITE_WEP40:

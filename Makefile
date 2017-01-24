@@ -20,6 +20,11 @@ CC		= $(CROSS_COMPILE)gcc
 EXTRA_CFLAGS+= -I${KDIR}
 EXTRA_CFLAGS+= -O2 -funroll-loops -D__CHECK_ENDIAN__
 
+#ifeq (1, $(BUILD_PCIE_PFU))
+EXTRA_CFLAGS+= -DPCIE_PFU
+mwlwifi-objs	+= pfu.o
+#endif
+
 ifeq (1, $(BUILD_MFG))
 EXTRA_CFLAGS+= -DSUPPORT_MFG
 endif

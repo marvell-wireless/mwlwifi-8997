@@ -26,6 +26,11 @@
 #include <linux/bitops.h>
 #include <net/mac80211.h>
 
+//#ifdef PCIE_PFU
+#include "port.h"
+#include "pfu.h"
+//#endif
+
 #define MWL_DRV_NAME     KBUILD_MODNAME
 #define MWL_DRV_VERSION	 "10.3.2.0-20170110"
 
@@ -48,6 +53,8 @@
 #define MACREG_REG_A2H_INTERRUPT_MASK        0x00000C34 /* (From ARM to host) */
 #define MACREG_REG_A2H_INTERRUPT_CLEAR_SEL   0x00000C38 /* (From ARM to host) */
 #define MACREG_REG_A2H_INTERRUPT_STATUS_MASK 0x00000C3C /* (From ARM to host) */
+#define MACREG_REG_SCRATCH2 0x00000C40 
+#define MACREG_REG_SCRATCH3 0x00000C44 
 
 /* Map to 0x80000000 on BAR1 */
 #define MACREG_REG_GEN_PTR                  0x00000C10
@@ -135,6 +142,7 @@ enum {
 	MWL8864 = 0,
 	MWL8897,
 	MWL8964,
+	MWL8997,
 	MWLUNKNOWN,
 };
 
@@ -259,11 +267,15 @@ struct mwl_rx_hndl {
 };
 
 struct mwl_desc_data {
+
+//#ifndef PCIE_PFU
 	dma_addr_t pphys_tx_ring;          /* ptr to first TX desc (phys.)    */
 	struct mwl_tx_desc *ptx_ring;      /* ptr to first TX desc (virt.)    */
 	struct mwl_tx_hndl *tx_hndl;
 	struct mwl_tx_hndl *pnext_tx_hndl; /* next TX handle that can be used */
 	struct mwl_tx_hndl *pstale_tx_hndl;/* the staled TX handle            */
+//#endif
+
 	dma_addr_t pphys_rx_ring;          /* ptr to first RX desc (phys.)    */
 	struct mwl_rx_desc *prx_ring;      /* ptr to first RX desc (virt.)    */
 	struct mwl_rx_hndl *rx_hndl;
@@ -427,6 +439,28 @@ struct mwl_priv {
 	u32 reg_value;
 	int tx_desc_num;
 #endif
+
+//#ifdef PCIE_PFU
+    /** Write pointer for TXBD ring */
+    u32           txbd_wrptr;
+    /** Shadow copy of TXBD read pointer */
+    u32           txbd_rdptr;
+    /** TXBD ring size */
+    u32           txbd_ring_size;
+    /** Lock for protecting the TX ring */
+    void          *tx_ring_lock;
+    /** Virtual base address of txbd_ring */
+    u8            *txbd_ring_vbase;
+    /** Physical base address of txbd_ring */
+    u64           txbd_ring_pbase;
+    /** Ring of buffer descriptors for TX */
+    mlan_pcie_data_buf  *txbd_ring[MLAN_MAX_TXRX_BD];
+
+    struct sk_buff   *tx_buf_list[MLAN_MAX_TXRX_BD];
+    /** Flush indicator for txbd_ring */
+    bool          txbd_flush;
+//#endif
+
 };
 
 struct beacon_info {
@@ -507,7 +541,17 @@ struct mwl_sta {
 };
 
 /* DMA header used by firmware and hardware. */
+
 struct mwl_dma_data {
+	__le16 fwlen;
+	struct ieee80211_hdr wh;
+	char data[0];
+} __packed;
+
+struct mwl_tx_pfu_dma_data {
+//#ifdef PCIE_PFU
+	struct mwl_tx_desc tx_desc;
+//#endif
 	__le16 fwlen;
 	struct ieee80211_hdr wh;
 	char data[0];

@@ -31,6 +31,7 @@ void mwl_tx_del_ampdu_pkts(struct ieee80211_hw *hw,
 			   struct ieee80211_sta *sta, u8 tid);
 void mwl_tx_skbs(unsigned long data);
 void mwl_tx_done(unsigned long data);
+void mwl_pfu_tx_done(unsigned long data);
 void mwl_tx_flush_amsdu(unsigned long data);
 void mwl_tx_del_sta_amsdu_pkts(struct ieee80211_sta *sta);
 

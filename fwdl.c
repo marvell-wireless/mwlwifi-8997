@@ -82,8 +82,10 @@ int mwl_fwdl_download_firmware(struct ieee80211_hw *hw)
 	 */
 	wiphy_debug(hw->wiphy, "fw download start\n");
 
-	/* Disable PFU before FWDL */
-	writel(0x100, priv->iobase1 + 0xE0E4);
+	if (priv->chip_type != MWL8997) {
+		/* Disable PFU before FWDL */
+		writel(0x100, priv->iobase1 + 0xE0E4);
+	}
 
 	/* make sure SCRATCH2 C40 is clear, in case we are too quick */
 	while (readl(priv->iobase1 + 0xc40) == 0)
@@ -104,7 +106,6 @@ int mwl_fwdl_download_firmware(struct ieee80211_hw *hw)
 
 		/* this is arbitrary per your platform; we use 0xffff */
 		curr_iteration = FW_MAX_NUM_CHECKS;
-
 		/* NOTE: the following back to back checks on C1C is time
 		 * sensitive, hence may need to be tweaked dependent on host
 		 * processor. Time for SC2 to go from the write of event 2 to
@@ -113,6 +114,7 @@ int mwl_fwdl_download_firmware(struct ieee80211_hw *hw)
 		 * or you can alternatively tweak this routines to fit your
 		 * platform
 		 */
+	if (priv->chip_type != MWL8997) {
 		do {
 			int_code = readl(priv->iobase1 + 0xc1c);
 			if (int_code != 0)
@@ -120,6 +122,7 @@ int mwl_fwdl_download_firmware(struct ieee80211_hw *hw)
 			cond_resched();
 			curr_iteration--;
 		} while (curr_iteration);
+	}
 
 		do {
 			int_code = readl(priv->iobase1 + 0xc1c);
@@ -142,11 +145,10 @@ int mwl_fwdl_download_firmware(struct ieee80211_hw *hw)
 
 		size_fw_downloaded += len;
 	}
-
+        
 	wiphy_debug(hw->wiphy,
 		    "FwSize = %d downloaded Size = %d curr_iteration %d\n",
 		    (int)fw->size, size_fw_downloaded, curr_iteration);
-
 	/* Now firware is downloaded successfully, so this part is to check
 	 * whether fw can properly execute to an extent that write back
 	 * signature to indicate its readiness to the host. NOTE: if your

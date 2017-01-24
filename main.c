@@ -42,6 +42,7 @@ static struct pci_device_id mwl_pci_id_tbl[] = {
 	{ PCI_VDEVICE(MARVELL, 0x2a55), .driver_data = MWL8864, },
 	{ PCI_VDEVICE(MARVELL, 0x2b38), .driver_data = MWL8897, },
 	{ PCI_VDEVICE(MARVELL, 0x2b40), .driver_data = MWL8964, },
+	{ PCI_VDEVICE(MARVELL_EXT, 0x2b42), .driver_data = MWL8997, },
 	{ },
 };
 
@@ -63,6 +64,12 @@ static struct mwl_chip_info mwl_chip_tbl[] = {
 		.fw_image	= "mwlwifi/88W8964.bin",
 		.antenna_tx	= ANTENNA_TX_4_AUTO,
 		.antenna_rx	= ANTENNA_RX_4_AUTO,
+	},
+	[MWL8997] = {
+		.part_name	= "88W8997",
+		.fw_image	= "mwlwifi/88W8997.bin",
+		.antenna_tx	= ANTENNA_TX_2,
+		.antenna_rx	= ANTENNA_RX_2,
 	},
 };
 
@@ -643,11 +650,14 @@ static int mwl_wl_init(struct mwl_priv *priv)
 {
 	struct ieee80211_hw *hw;
 	int rc;
+	void *tx_done_func;
+//#ifndef PCIE_PFU
 	int i;
+//#endif
 
 	hw = priv->hw;
 
-	hw->extra_tx_headroom = SYSADPT_MIN_BYTES_HEADROOM;
+	hw->extra_tx_headroom = SYSADPT_TX_MIN_BYTES_HEADROOM;
 	hw->queues = SYSADPT_TX_WMM_QUEUES;
 
 	/* Set rssi values to dBm */
@@ -696,8 +706,11 @@ static int mwl_wl_init(struct mwl_priv *priv)
 
 	tasklet_init(&priv->tx_task, (void *)mwl_tx_skbs, (unsigned long)hw);
 	tasklet_disable(&priv->tx_task);
+
+	tx_done_func = (void*) ((IS_PFU_ENABLED(priv->chip_type))?mwl_pfu_tx_done:mwl_tx_done);
+
 	tasklet_init(&priv->tx_done_task,
-		     (void *)mwl_tx_done, (unsigned long)hw);
+		     tx_done_func, (unsigned long)hw);
 	tasklet_disable(&priv->tx_done_task);
 	tasklet_init(&priv->rx_task, (void *)mwl_rx_recv, (unsigned long)hw);
 	tasklet_disable(&priv->rx_task);
@@ -748,11 +761,15 @@ static int mwl_wl_init(struct mwl_priv *priv)
 
 	SET_IEEE80211_PERM_ADDR(hw, priv->hw_data.mac_addr);
 
-	writel(priv->desc_data[0].pphys_tx_ring,
-	       priv->iobase0 + priv->desc_data[0].wcb_base);
-	for (i = 1; i < SYSADPT_TOTAL_TX_QUEUES; i++)
-		writel(priv->desc_data[i].pphys_tx_ring,
-		       priv->iobase0 + priv->desc_data[i].wcb_base);
+//#ifndef PCIE_PFU
+	if (!IS_PFU_ENABLED(priv->chip_type)) {
+		writel(priv->desc_data[0].pphys_tx_ring,
+			priv->iobase0 + priv->desc_data[0].wcb_base);
+		for (i = 1; i < SYSADPT_TOTAL_TX_QUEUES; i++)
+			writel(priv->desc_data[i].pphys_tx_ring,
+				priv->iobase0 + priv->desc_data[i].wcb_base);
+	}
+//#endif
 	writel(priv->desc_data[0].pphys_rx_ring,
 	       priv->iobase0 + priv->desc_data[0].rx_desc_read);
 	writel(priv->desc_data[0].pphys_rx_ring,
