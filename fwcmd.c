@@ -1488,6 +1488,33 @@ int mwl_fwcmd_broadcast_ssid_enable(struct ieee80211_hw *hw,
 	return 0;
 }
 
+int mwl_fwcmd_powersave_EnblDsbl(struct ieee80211_hw *hw,
+                                 struct ieee80211_conf *conf)
+{
+	struct mwl_priv *priv = hw->priv;
+	struct hostcmd_cmd_802_11_ps_mode *pcmd;
+
+	pcmd = (struct hostcmd_cmd_802_11_ps_mode *)&priv->pcmd_buf[0];
+
+	mutex_lock(&priv->fwcmd_mutex);
+
+	memset(pcmd, 0x00, sizeof(*pcmd));
+	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_802_11_PS_MODE);
+	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
+	pcmd->action = cpu_to_le16(WL_SET);
+	pcmd->powermode = (conf->flags & IEEE80211_CONF_PS);
+
+	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_802_11_PS_MODE)) {
+		mutex_unlock(&priv->fwcmd_mutex);
+		wiphy_err(hw->wiphy, "failed execution\n");
+		return -EIO;
+	}
+
+	mutex_unlock(&priv->fwcmd_mutex);
+
+	return 0;
+}
+
 int mwl_fwcmd_set_rf_channel(struct ieee80211_hw *hw,
 			     struct ieee80211_conf *conf)
 {
@@ -2077,12 +2104,12 @@ int mwl_fwcmd_set_new_stn_add(struct ieee80211_hw *hw,
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_NEW_STN);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 	pcmd->cmd_hdr.macid = mwl_vif->macid;
+	pcmd->if_type = vif->type;
 
 	pcmd->action = cpu_to_le16(HOSTCMD_ACT_STA_ACTION_ADD);
 	if (vif->type == NL80211_IFTYPE_STATION) {
 		pcmd->aid = cpu_to_le16(1);
 		pcmd->stn_id = cpu_to_le16(1);
-		pcmd->reserved = cpu_to_le16(1);
 	} else {
 		pcmd->aid = cpu_to_le16(sta->aid);
 		pcmd->stn_id = cpu_to_le16(sta->aid);
@@ -2137,7 +2164,6 @@ int mwl_fwcmd_set_new_stn_add(struct ieee80211_hw *hw,
 		ether_addr_copy(pcmd->mac_addr, mwl_vif->sta_mac);
 		pcmd->aid = cpu_to_le16(2);
 		pcmd->stn_id = cpu_to_le16(2);
-		pcmd->reserved = 0;
 		if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_SET_NEW_STN)) {
 			mutex_unlock(&priv->fwcmd_mutex);
 			wiphy_err(hw->wiphy, "failed execution\n");
@@ -2167,6 +2193,7 @@ int mwl_fwcmd_set_new_stn_add_self(struct ieee80211_hw *hw,
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_NEW_STN);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 	pcmd->cmd_hdr.macid = mwl_vif->macid;
+	pcmd->if_type = vif->type;
 
 	pcmd->action = cpu_to_le16(HOSTCMD_ACT_STA_ACTION_ADD);
 	ether_addr_copy(pcmd->mac_addr, vif->addr);

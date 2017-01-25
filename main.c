@@ -664,6 +664,10 @@ static int mwl_wl_init(struct mwl_priv *priv)
 	ieee80211_hw_set(hw, SIGNAL_DBM);
 	ieee80211_hw_set(hw, HAS_RATE_CONTROL);
 
+	if(priv->chip_type == MWL8997) {
+		ieee80211_hw_set(hw, SUPPORTS_PS);
+	}
+
 	/* Ask mac80211 not to trigger PS mode
 	 * based on PM bit of incoming frames.
 	 */

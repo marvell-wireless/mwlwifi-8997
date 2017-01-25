@@ -255,6 +255,13 @@ static int mwl_mac80211_config(struct ieee80211_hw *hw,
 	if (rc)
 		goto out;
 
+	if (changed & IEEE80211_CONF_CHANGE_PS)
+	{
+		rc = mwl_fwcmd_powersave_EnblDsbl(hw, conf);
+		if(rc)
+			goto out;
+	}
+
 	if (changed & IEEE80211_CONF_CHANGE_CHANNEL) {
 		int rate = 0;
 

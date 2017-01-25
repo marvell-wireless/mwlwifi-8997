@@ -97,6 +97,9 @@ int mwl_fwcmd_rf_antenna(struct ieee80211_hw *hw, int dir, int antenna);
 int mwl_fwcmd_broadcast_ssid_enable(struct ieee80211_hw *hw,
 				    struct ieee80211_vif *vif, bool enable);
 
+int mwl_fwcmd_powersave_EnblDsbl(struct ieee80211_hw *hw,
+                                 struct ieee80211_conf *conf);
+
 int mwl_fwcmd_set_rf_channel(struct ieee80211_hw *hw,
 			     struct ieee80211_conf *conf);
 

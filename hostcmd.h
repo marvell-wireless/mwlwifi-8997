@@ -30,6 +30,7 @@
 #define HOSTCMD_CMD_MEM_ADDR_ACCESS             0x001d
 #define HOSTCMD_CMD_802_11_TX_POWER             0x001f
 #define HOSTCMD_CMD_802_11_RF_ANTENNA           0x0020
+#define HOSTCMD_CMD_802_11_PS_MODE              0x0021
 #define HOSTCMD_CMD_BROADCAST_SSID_ENABLE       0x0050 /* per-vif */
 #define HOSTCMD_CMD_SET_RF_CHANNEL              0x010a
 #define HOSTCMD_CMD_SET_AID                     0x010d /* per-vif */
@@ -340,6 +341,13 @@ struct hostcmd_cmd_802_11_rf_antenna {
 	struct hostcmd_header cmd_hdr;
 	__le16 action;
 	__le16 antenna_mode;     /* Number of antennas or 0xffff(diversity) */
+} __packed;
+
+/* HOSTCMD_CMD_802_11_PS_MODE */
+struct hostcmd_cmd_802_11_ps_mode {
+        struct hostcmd_header cmd_hdr;
+        __le16 action;
+        __le16 powermode;     /* PowerSave Enable/Disable */
 } __packed;
 
 /* HOSTCMD_CMD_BROADCAST_SSID_ENABLE */
@@ -655,7 +663,7 @@ struct hostcmd_cmd_set_new_stn {
 	u8 mac_addr[ETH_ALEN];
 	__le16 stn_id;
 	__le16 action;
-	__le16 reserved;
+    __le16 if_type;
 	struct peer_info peer_info;
 	/* UAPSD_SUPPORT */
 	u8 qos_info;
