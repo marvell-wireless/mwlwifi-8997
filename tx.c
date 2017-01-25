@@ -476,7 +476,7 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 	unsigned int wrindx;
 	const t_u32 num_tx_buffs = MLAN_MAX_TXRX_BD << PCIE_TX_START_PTR;
 //#else
-	struct mwl_tx_hndl *tx_hndl;
+	struct mwl_tx_hndl *tx_hndl  = NULL;
 //#endif
 
 	struct ieee80211_hdr *wh;
@@ -581,7 +581,7 @@ static inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 
 //#ifdef PCIE_PFU
 	if (IS_PFU_ENABLED(priv->chip_type)) {
-		tx_desc->pkt_ptr = sizeof(struct mwl_tx_desc);
+		tx_desc->pkt_ptr = cpu_to_le32(sizeof(struct mwl_tx_desc));
 	} else {
 //#else
 	tx_desc->pkt_ptr = cpu_to_le32(dma);

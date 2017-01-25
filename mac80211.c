@@ -258,12 +258,12 @@ static int mwl_mac80211_config(struct ieee80211_hw *hw,
 	if (changed & IEEE80211_CONF_CHANGE_CHANNEL) {
 		int rate = 0;
 
-		if (conf->chandef.chan->band == NL80211_BAND_2GHZ) {
+		if (conf->chandef.chan->band == IEEE80211_BAND_2GHZ) {
 			mwl_fwcmd_set_apmode(hw, AP_MODE_2_4GHZ_11AC_MIXED);
 			mwl_fwcmd_set_linkadapt_cs_mode(hw,
 							LINK_CS_STATE_CONSERV);
 			rate = mwl_rates_24[0].hw_value;
-		} else if (conf->chandef.chan->band == NL80211_BAND_5GHZ) {
+		} else if (conf->chandef.chan->band == IEEE80211_BAND_5GHZ) {
 			mwl_fwcmd_set_apmode(hw, AP_MODE_11AC);
 			mwl_fwcmd_set_linkadapt_cs_mode(hw,
 							LINK_CS_STATE_AUTO);
@@ -331,7 +331,7 @@ static void mwl_mac80211_bss_info_changed_ap(struct ieee80211_hw *hw,
 		if (idx)
 			idx--;
 
-		if (hw->conf.chandef.chan->band == NL80211_BAND_2GHZ)
+		if (hw->conf.chandef.chan->band == IEEE80211_BAND_2GHZ)
 			rate = mwl_rates_24[idx].hw_value;
 		else
 			rate = mwl_rates_50[idx].hw_value;
@@ -599,7 +599,7 @@ static int mwl_mac80211_ampdu_action(struct ieee80211_hw *hw,
 				     struct ieee80211_vif *vif,
 				     enum ieee80211_ampdu_mlme_action action,
 				     struct ieee80211_sta *sta,
-				     u16 tid, u16 *ssn, u8 buf_size)
+				     u16 tid, u16 *ssn, u8 buf_size, bool amsdu)
 {
 	int rc = 0;
 	struct mwl_priv *priv = hw->priv;
@@ -678,6 +678,7 @@ static int mwl_mac80211_ampdu_action(struct ieee80211_hw *hw,
 			if (!rc) {
 				stream->state = AMPDU_STREAM_ACTIVE;
 				sta_info->check_ba_failed[tid] = 0;
+				sta_info->is_amsdu_allowed = amsdu;
 			} else {
 				idx = stream->idx;
 				spin_unlock_bh(&priv->stream_lock);
