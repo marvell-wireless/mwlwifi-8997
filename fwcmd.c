@@ -162,10 +162,8 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 			priv->in_send_cmd = false;
 			return -EIO;
 		}
-		else
-		{
-			wiphy_err(priv->hw->wiphy, "CMDDOWNLOADED: 0x%04x\n", cmd);
-		}
+		wiphy_err(priv->hw->wiphy,
+				"CMDDOWNLOADED: 0x%04x\n", cmd);
 	} else {
 		wiphy_warn(priv->hw->wiphy,
 			   "previous command is still running\n");
@@ -906,7 +904,7 @@ static u32 pci_read_mac_reg(struct mwl_priv *priv, u32 offset)
 		}
 		return 0;
 	} else
-		return le32_to_cpu(*(__le32* __force)
+		return le32_to_cpu(*(__le32 * __force)
 		       (MAC_REG_ADDR_PCI(offset)));
 }
 
@@ -998,9 +996,7 @@ int mwl_fwcmd_set_hw_specs(struct ieee80211_hw *hw)
 {
 	struct mwl_priv *priv = hw->priv;
 	struct hostcmd_cmd_set_hw_spec *pcmd;
-//#ifndef PCIE_PFU
 	int i;
-//#endif
 
 	pcmd = (struct hostcmd_cmd_set_hw_spec *)&priv->pcmd_buf[0];
 
@@ -1010,29 +1006,27 @@ int mwl_fwcmd_set_hw_specs(struct ieee80211_hw *hw)
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_HW_SPEC);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 
-//#ifdef PCIE_PFU
 	if (IS_PFU_ENABLED(priv->chip_type)) {
 		pcmd->wcb_base[0] = cpu_to_le32(priv->txbd_ring_pbase);
-//		  host_spec.txbd_addr_hi = (t_u32)(((t_u64)pmadapter->txbd_ring_pbase)>>32);
+/*  host_spec.txbd_addr_hi =
+*       (unsigned int)(((unsigned long long)pmadapter->txbd_ring_pbase)>>32);
+*/
 	} else {
-//#else
-		pcmd->wcb_base[0] = cpu_to_le32(priv->desc_data[0].pphys_tx_ring);
+		pcmd->wcb_base[0] =
+			cpu_to_le32(priv->desc_data[0].pphys_tx_ring);
 		for (i = 1; i < SYSADPT_TOTAL_TX_QUEUES; i++)
 			pcmd->wcb_base[i] =
 				cpu_to_le32(priv->desc_data[i].pphys_tx_ring);
 	}
-//#endif
 
-//#ifdef PCIE_PFU
 	if (IS_PFU_ENABLED(priv->chip_type)) {
 		pcmd->tx_wcb_num_per_queue = cpu_to_le32(MLAN_MAX_TXRX_BD);
 		pcmd->num_tx_queues = cpu_to_le32(SYSADPT_PFU_NUM_OF_DESC_DATA);
 	} else {
-//#else
-		pcmd->tx_wcb_num_per_queue = cpu_to_le32(SYSADPT_MAX_NUM_TX_DESC);
+		pcmd->tx_wcb_num_per_queue =
+			cpu_to_le32(SYSADPT_MAX_NUM_TX_DESC);
 		pcmd->num_tx_queues = cpu_to_le32(SYSADPT_NUM_OF_DESC_DATA);
 	}
-//#endif
 
 	pcmd->total_rx_wcb = cpu_to_le32(SYSADPT_MAX_NUM_RX_DESC);
 	pcmd->rxpd_wr_ptr = cpu_to_le32(priv->desc_data[0].pphys_rx_ring);
@@ -1489,7 +1483,7 @@ int mwl_fwcmd_broadcast_ssid_enable(struct ieee80211_hw *hw,
 }
 
 int mwl_fwcmd_powersave_EnblDsbl(struct ieee80211_hw *hw,
-                                 struct ieee80211_conf *conf)
+				struct ieee80211_conf *conf)
 {
 	struct mwl_priv *priv = hw->priv;
 	struct hostcmd_cmd_802_11_ps_mode *pcmd;
@@ -1502,7 +1496,7 @@ int mwl_fwcmd_powersave_EnblDsbl(struct ieee80211_hw *hw,
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_802_11_PS_MODE);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 	pcmd->action = cpu_to_le16(WL_SET);
-	pcmd->powermode = (conf->flags & IEEE80211_CONF_PS);
+	pcmd->powermode = cpu_to_le16(conf->flags & IEEE80211_CONF_PS);
 
 	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_802_11_PS_MODE)) {
 		mutex_unlock(&priv->fwcmd_mutex);
@@ -1516,7 +1510,7 @@ int mwl_fwcmd_powersave_EnblDsbl(struct ieee80211_hw *hw,
 }
 
 int mwl_fwcmd_set_rf_channel(struct ieee80211_hw *hw,
-			     struct ieee80211_conf *conf)
+			struct ieee80211_conf *conf)
 {
 	struct ieee80211_channel *channel = conf->chandef.chan;
 	struct mwl_priv *priv = hw->priv;
@@ -2104,7 +2098,7 @@ int mwl_fwcmd_set_new_stn_add(struct ieee80211_hw *hw,
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_NEW_STN);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 	pcmd->cmd_hdr.macid = mwl_vif->macid;
-	pcmd->if_type = vif->type;
+	pcmd->if_type = cpu_to_le16(vif->type);
 
 	pcmd->action = cpu_to_le16(HOSTCMD_ACT_STA_ACTION_ADD);
 	if (vif->type == NL80211_IFTYPE_STATION) {
@@ -2193,7 +2187,7 @@ int mwl_fwcmd_set_new_stn_add_self(struct ieee80211_hw *hw,
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_NEW_STN);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 	pcmd->cmd_hdr.macid = mwl_vif->macid;
-	pcmd->if_type = vif->type;
+	pcmd->if_type = cpu_to_le16(vif->type);
 
 	pcmd->action = cpu_to_le16(HOSTCMD_ACT_STA_ACTION_ADD);
 	ether_addr_copy(pcmd->mac_addr, vif->addr);
@@ -2440,15 +2434,15 @@ int mwl_fwcmd_encryption_set_key(struct ieee80211_hw *hw,
 	else
 		action = ENCR_ACTION_TYPE_SET_GROUP_KEY;
 
-//TODO: This code is missing in git ToT now
+/* TODO: This code is missing in git ToT now - security mayn't work */
 #if 0
 {
 		action = ENCR_ACTION_TYPE_SET_GROUP_KEY;
 
-		//if (vif->type == NL80211_IFTYPE_MESH_POINT &&
-		//    !ether_addr_equal(mwl_vif->bssid, addr))
- 			pcmd->key_param.key_info |=
- 				cpu_to_le32(ENCR_KEY_FLAG_RXGROUPKEY);
+		/* if (vif->type == NL80211_IFTYPE_MESH_POINT &&
+		    !ether_addr_equal(mwl_vif->bssid, addr)) */
+			pcmd->key_param.key_info |=
+				cpu_to_le32(ENCR_KEY_FLAG_RXGROUPKEY);
 }
 #endif
 

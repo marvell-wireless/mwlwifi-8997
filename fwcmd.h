@@ -98,22 +98,22 @@ int mwl_fwcmd_broadcast_ssid_enable(struct ieee80211_hw *hw,
 				    struct ieee80211_vif *vif, bool enable);
 
 int mwl_fwcmd_powersave_EnblDsbl(struct ieee80211_hw *hw,
-                                 struct ieee80211_conf *conf);
+				struct ieee80211_conf *conf);
 
 int mwl_fwcmd_set_rf_channel(struct ieee80211_hw *hw,
-			     struct ieee80211_conf *conf);
+				struct ieee80211_conf *conf);
 
 int mwl_fwcmd_set_aid(struct ieee80211_hw *hw,
-		      struct ieee80211_vif *vif, u8 *bssid, u16 aid);
+			struct ieee80211_vif *vif, u8 *bssid, u16 aid);
 
 int mwl_fwcmd_set_infra_mode(struct ieee80211_hw *hw,
-			     struct ieee80211_vif *vif);
+				struct ieee80211_vif *vif);
 
 int mwl_fwcmd_set_rts_threshold(struct ieee80211_hw *hw,
 				int threshold);
 
 int mwl_fwcmd_set_edca_params(struct ieee80211_hw *hw, u8 index,
-			      u16 cw_min, u16 cw_max, u8 aifs, u16 txop);
+				u16 cw_min, u16 cw_max, u8 aifs, u16 txop);
 
 int mwl_fwcmd_set_radar_detect(struct ieee80211_hw *hw, u16 action);
 
@@ -122,22 +122,22 @@ int mwl_fwcmd_set_wmm_mode(struct ieee80211_hw *hw, bool enable);
 int mwl_fwcmd_ht_guard_interval(struct ieee80211_hw *hw, u32 gi_type);
 
 int mwl_fwcmd_use_fixed_rate(struct ieee80211_hw *hw,
-			     int mcast, int mgmt);
+				int mcast, int mgmt);
 
 int mwl_fwcmd_set_linkadapt_cs_mode(struct ieee80211_hw *hw,
-				    u16 cs_mode);
+				u16 cs_mode);
 
 int mwl_fwcmd_set_rate_adapt_mode(struct ieee80211_hw *hw,
-				  u16 mode);
+				u16 mode);
 
 int mwl_fwcmd_set_mac_addr_client(struct ieee80211_hw *hw,
-				  struct ieee80211_vif *vif, u8 *mac_addr);
+				struct ieee80211_vif *vif, u8 *mac_addr);
 
 int mwl_fwcmd_get_watchdog_bitmap(struct ieee80211_hw *hw,
-				  u8 *bitmap);
+				u8 *bitmap);
 
 int mwl_fwcmd_remove_mac_addr(struct ieee80211_hw *hw,
-			      struct ieee80211_vif *vif, u8 *mac_addr);
+				struct ieee80211_vif *vif, u8 *mac_addr);
 
 int mwl_fwcmd_bss_start(struct ieee80211_hw *hw,
 			struct ieee80211_vif *vif, bool enable);

@@ -651,9 +651,7 @@ static int mwl_wl_init(struct mwl_priv *priv)
 	struct ieee80211_hw *hw;
 	int rc;
 	void *tx_done_func;
-//#ifndef PCIE_PFU
 	int i;
-//#endif
 
 	hw = priv->hw;
 
@@ -664,9 +662,8 @@ static int mwl_wl_init(struct mwl_priv *priv)
 	ieee80211_hw_set(hw, SIGNAL_DBM);
 	ieee80211_hw_set(hw, HAS_RATE_CONTROL);
 
-	if(priv->chip_type == MWL8997) {
+	if (priv->chip_type == MWL8997)
 		ieee80211_hw_set(hw, SUPPORTS_PS);
-	}
 
 	/* Ask mac80211 not to trigger PS mode
 	 * based on PM bit of incoming frames.
@@ -711,7 +708,8 @@ static int mwl_wl_init(struct mwl_priv *priv)
 	tasklet_init(&priv->tx_task, (void *)mwl_tx_skbs, (unsigned long)hw);
 	tasklet_disable(&priv->tx_task);
 
-	tx_done_func = (void*) ((IS_PFU_ENABLED(priv->chip_type))?mwl_pfu_tx_done:mwl_tx_done);
+	tx_done_func = (void *)
+	((IS_PFU_ENABLED(priv->chip_type))?mwl_pfu_tx_done:mwl_tx_done);
 
 	tasklet_init(&priv->tx_done_task,
 		     tx_done_func, (unsigned long)hw);
@@ -765,7 +763,6 @@ static int mwl_wl_init(struct mwl_priv *priv)
 
 	SET_IEEE80211_PERM_ADDR(hw, priv->hw_data.mac_addr);
 
-//#ifndef PCIE_PFU
 	if (!IS_PFU_ENABLED(priv->chip_type)) {
 		writel(priv->desc_data[0].pphys_tx_ring,
 			priv->iobase0 + priv->desc_data[0].wcb_base);
@@ -773,7 +770,6 @@ static int mwl_wl_init(struct mwl_priv *priv)
 			writel(priv->desc_data[i].pphys_tx_ring,
 				priv->iobase0 + priv->desc_data[i].wcb_base);
 	}
-//#endif
 	writel(priv->desc_data[0].pphys_rx_ring,
 	       priv->iobase0 + priv->desc_data[0].rx_desc_read);
 	writel(priv->desc_data[0].pphys_rx_ring,

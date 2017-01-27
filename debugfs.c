@@ -395,7 +395,6 @@ static ssize_t mwl_debugfs_tx_desc_read(struct file *file,
 					size_t count, loff_t *ppos)
 {
 	ssize_t ret = 0;
-//#ifndef PCIE_PFU
 	struct mwl_priv *priv = (struct mwl_priv *)file->private_data;
 	int len = 0, size = PAGE_SIZE;
 	struct mwl_desc_data *desc;
@@ -408,7 +407,8 @@ static ssize_t mwl_debugfs_tx_desc_read(struct file *file,
 		spin_lock_bh(&priv->tx_desc_lock);
 		num = priv->tx_desc_num;
 		desc = &priv->desc_data[num];
-		len += scnprintf(p + len, size - len, "num: %i fw_desc_cnt:%i\n",
+		len += scnprintf(p + len, size - len,
+				"num: %i fw_desc_cnt:%i\n",
 				num, priv->fw_desc_cnt[num]);
 		for (i = 0; i < SYSADPT_MAX_NUM_TX_DESC; i++) {
 			len += scnprintf(p + len, size - len, "%3i %x\n", i,
@@ -427,7 +427,6 @@ static ssize_t mwl_debugfs_tx_desc_read(struct file *file,
 		free_page(page);
 	}
 
-//#endif
 	return ret;
 }
 

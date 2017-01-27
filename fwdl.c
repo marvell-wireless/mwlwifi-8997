@@ -145,7 +145,7 @@ int mwl_fwdl_download_firmware(struct ieee80211_hw *hw)
 
 		size_fw_downloaded += len;
 	}
-        
+
 	wiphy_debug(hw->wiphy,
 		    "FwSize = %d downloaded Size = %d curr_iteration %d\n",
 		    (int)fw->size, size_fw_downloaded, curr_iteration);

@@ -136,11 +136,10 @@ static void mwl_mac80211_stop(struct ieee80211_hw *hw)
 	tasklet_disable(&priv->qe_task);
 
 	/* Return all skbs to mac80211 */
-	if (IS_PFU_ENABLED(priv->chip_type)) {
+	if (IS_PFU_ENABLED(priv->chip_type))
 		mwl_pfu_tx_done((unsigned long)hw);
-	} else {
+	else
 		mwl_tx_done((unsigned long)hw);
-	}
 }
 
 static int mwl_mac80211_add_interface(struct ieee80211_hw *hw,
@@ -255,10 +254,9 @@ static int mwl_mac80211_config(struct ieee80211_hw *hw,
 	if (rc)
 		goto out;
 
-	if (changed & IEEE80211_CONF_CHANGE_PS)
-	{
+	if (changed & IEEE80211_CONF_CHANGE_PS) {
 		rc = mwl_fwcmd_powersave_EnblDsbl(hw, conf);
-		if(rc)
+		if (rc)
 			goto out;
 	}
 

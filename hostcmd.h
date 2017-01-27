@@ -345,9 +345,9 @@ struct hostcmd_cmd_802_11_rf_antenna {
 
 /* HOSTCMD_CMD_802_11_PS_MODE */
 struct hostcmd_cmd_802_11_ps_mode {
-        struct hostcmd_header cmd_hdr;
-        __le16 action;
-        __le16 powermode;     /* PowerSave Enable/Disable */
+	struct hostcmd_header cmd_hdr;
+	__le16 action;
+	__le16 powermode;     /* PowerSave Enable/Disable */
 } __packed;
 
 /* HOSTCMD_CMD_BROADCAST_SSID_ENABLE */
@@ -663,7 +663,7 @@ struct hostcmd_cmd_set_new_stn {
 	u8 mac_addr[ETH_ALEN];
 	__le16 stn_id;
 	__le16 action;
-    __le16 if_type;
+	__le16 if_type;
 	struct peer_info peer_info;
 	/* UAPSD_SUPPORT */
 	u8 qos_info;

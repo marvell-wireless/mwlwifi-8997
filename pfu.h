@@ -45,29 +45,20 @@
 	     (rdptr & MLAN_BD_FLAG_TX_ROLLOVER_IND)))
 
 
-typedef MLAN_PACK_START struct _mlan_pcie_data_buf {
-#ifdef PCIE_PFU
-    /** Buffer descriptor flags */
-    t_u16   flags;
-    /** Offset of fragment/pkt to start of ip header */
-    t_u16   offset;
-    /** Fragment length of the buffer */
-    t_u16   frag_len;
-    /** Length of the buffer */
-    t_u16   len;
-    /** Physical address of the buffer */
-    t_u64   paddr;
-    /** Reserved */
-    t_u32   reserved;
-#else
-    /** Physical address of the buffer */
-    t_u64   paddr;
-    /** Length of the buffer */
-    t_u16   len;
-    /** Buffer descriptor flags */
-    t_u16   flags;
-#endif
-} MLAN_PACK_END mlan_pcie_data_buf;
+MLAN_PACK_START struct _mlan_pcie_data_buf {
+	 /** Buffer descriptor flags */
+	 unsigned short   flags;
+	 /** Offset of fragment/pkt to start of ip header */
+	 unsigned short   offset;
+	 /** Fragment length of the buffer */
+	 unsigned short   frag_len;
+	 /** Length of the buffer */
+	 unsigned short   len;
+	 /** Physical address of the buffer */
+	 unsigned long long   paddr;
+	 /** Reserved */
+	 unsigned int   reserved;
+} MLAN_PACK_END;
 
 int wlan_pcie_create_txbd_ring(struct ieee80211_hw *hw);
 int wlan_pcie_delete_txbd_ring(struct ieee80211_hw *hw);
