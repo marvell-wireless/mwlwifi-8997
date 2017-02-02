@@ -1,12 +1,14 @@
 
 #include "sysadpt.h"
 #include "dev.h"
+#include "pcie.h"
 
 int wlan_pcie_create_txbd_ring(struct ieee80211_hw *hw)
 {
 	int ret = 0;
 	unsigned int i;
 	struct mwl_priv *priv = hw->priv;
+	struct mwl_pcie_card *card = priv->intf;
 
 	/*
 	 * driver maintaines the write pointer and firmware maintaines the read
@@ -23,7 +25,7 @@ int wlan_pcie_create_txbd_ring(struct ieee80211_hw *hw)
 	wiphy_err(hw->wiphy, "TX ring: allocating %d bytes\n",
 		priv->txbd_ring_size);
 
-	priv->txbd_ring_vbase = pci_alloc_consistent(priv->pdev,
+	priv->txbd_ring_vbase = pci_alloc_consistent(card->pdev,
 		priv->txbd_ring_size, (dma_addr_t *)&priv->txbd_ring_pbase);
 
 	if (!priv->txbd_ring_vbase) {
@@ -60,13 +62,14 @@ int wlan_pcie_delete_txbd_ring(struct ieee80211_hw *hw)
 	struct sk_buff *skb;
 	struct mwl_tx_desc *tx_desc;
 	struct mwl_priv *priv = hw->priv;
+	struct mwl_pcie_card *card = priv->intf;
 
 	for (i = 0; i < MLAN_MAX_TXRX_BD; i++) {
 		if (priv->tx_buf_list[i]) {
 			skb = priv->tx_buf_list[i];
 			tx_desc = (struct mwl_tx_desc *)skb->data;
 
-			pci_unmap_single(priv->pdev,
+			pci_unmap_single(card->pdev,
 					le32_to_cpu(tx_desc->pkt_ptr),
 					le16_to_cpu(tx_desc->pkt_len),
 					PCI_DMA_TODEVICE);
@@ -82,7 +85,7 @@ int wlan_pcie_delete_txbd_ring(struct ieee80211_hw *hw)
 	}
 
 	if (priv->txbd_ring_vbase) {
-		pci_free_consistent(priv->pdev,
+		pci_free_consistent(card->pdev,
 				priv->txbd_ring_size,
 				priv->txbd_ring_vbase,
 				priv->txbd_ring_pbase);

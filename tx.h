@@ -29,10 +29,17 @@ void mwl_tx_del_pkts_via_sta(struct ieee80211_hw *hw,
 			     struct ieee80211_sta *sta);
 void mwl_tx_del_ampdu_pkts(struct ieee80211_hw *hw,
 			   struct ieee80211_sta *sta, u8 tid);
+
+void mwl_tx_del_sta_amsdu_pkts(struct ieee80211_sta *sta);
 void mwl_tx_skbs(unsigned long data);
+void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
+			      struct sk_buff *tx_skb);
 void mwl_tx_done(unsigned long data);
 void mwl_pfu_tx_done(unsigned long data);
 void mwl_tx_flush_amsdu(unsigned long data);
-void mwl_tx_del_sta_amsdu_pkts(struct ieee80211_sta *sta);
+void mwl_tx_ack_amsdu_pkts(struct ieee80211_hw *hw, u32 rate,
+					 struct sk_buff_head *amsdu_pkts);
+void mwl_tx_prepare_info(struct ieee80211_hw *hw, u32 rate,
+				       struct ieee80211_tx_info *info);
 
 #endif /* _TX_H_ */

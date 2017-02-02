@@ -20,6 +20,10 @@
 #ifndef _FWDL_H_
 #define _FWDL_H_
 
+#define FW_CHECK_MSECS                  3
+#define FW_MAX_NUM_CHECKS               0xffff
+
+
 int mwl_fwdl_download_firmware(struct ieee80211_hw *hw);
 
 #endif /* _FWDL_H_ */

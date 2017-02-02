@@ -33,6 +33,8 @@
 #define HOSTCMD_STA_FWRDY_SIGNATURE     0xF0F1F2F4
 #define HOSTCMD_SOFTAP_FWRDY_SIGNATURE  0xF1F2F4A5
 
+#define HOSTCMD_RESP_BIT				0x8000
+
 #define GUARD_INTERVAL_STANDARD         1
 #define GUARD_INTERVAL_SHORT            2
 #define GUARD_INTERVAL_AUTO             3
@@ -59,15 +61,24 @@ enum encr_type {
 	ENCR_TYPE_MIX = 7,
 };
 
+struct cmd_header {
+	__le16 command;
+	__le16 len;
+} __packed;
+
 void mwl_fwcmd_reset(struct ieee80211_hw *hw);
 
 void mwl_fwcmd_int_enable(struct ieee80211_hw *hw);
 
 void mwl_fwcmd_int_disable(struct ieee80211_hw *hw);
 
+char *mwl_fwcmd_get_cmd_string(unsigned short cmd);
+
 int mwl_fwcmd_get_hw_specs(struct ieee80211_hw *hw);
 
 int mwl_fwcmd_set_hw_specs(struct ieee80211_hw *hw);
+
+int mwl_fwcmd_set_cfg_data(struct ieee80211_hw *hw, __le16 type);
 
 int mwl_fwcmd_get_stat(struct ieee80211_hw *hw,
 		       struct ieee80211_low_level_stats *stats);
@@ -237,5 +248,7 @@ int mwl_fwcmd_quiet_mode(struct ieee80211_hw *hw, bool enable, u32 period,
 			 u32 duration, u32 next_offset);
 
 void mwl_fwcmd_get_survey(struct ieee80211_hw *hw, int idx);
+
+void mwl_hex_dump(const void *buf, size_t len);
 
 #endif /* _FWCMD_H_ */

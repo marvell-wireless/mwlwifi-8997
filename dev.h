@@ -32,12 +32,6 @@
 #define MWL_DRV_NAME     KBUILD_MODNAME
 #define MWL_DRV_VERSION	 "10.3.2.0-20170110"
 
-#define MAC_REG_ADDR(offset)      (offset)
-#define MAC_REG_ADDR_PCI(offset)  ((priv->iobase1 + 0xA000) + offset)
-
-#define MCU_CCA_CNT               MAC_REG_ADDR(0x06A0)
-#define MCU_TXPE_CNT              MAC_REG_ADDR(0x06A4)
-#define MCU_LAST_READ             MAC_REG_ADDR(0x06A8)
 
 /* Map to 0x80000000 (Bus control) on BAR0 */
 #define MACREG_REG_H2A_INTERRUPT_EVENTS      0x00000C18 /* (From host to ARM) */
@@ -155,6 +149,13 @@ enum {
 	AMPDU_STREAM_IN_PROGRESS,
 	AMPDU_STREAM_ACTIVE,
 };
+
+enum {
+	MWL_IF_PCIE = 0x03,
+	MWL_IF_SDIO = 0x02,
+};
+
+#define CMD_BUF_SIZE     0x4000
 
 struct mwl_chip_info {
 	const char *part_name;
@@ -308,6 +309,53 @@ struct mwl_survey_info {
 #define MWL_ACCESS_ADDR               7
 #endif
 
+struct mwl_priv;
+#define INTF_CMDHEADER_LEN(hd_len)	(hd_len/sizeof(unsigned short))
+
+struct mwl_if_ops {
+	unsigned short inttf_head_len;
+	struct tasklet_struct *ptx_task;
+	struct tasklet_struct *ptx_done_task;
+	struct tasklet_struct *pqe_task;
+	struct workqueue_struct *ptx_workq;
+	struct work_struct *ptx_work;
+	struct mwl_chip_info	mwl_chip_tbl;
+
+	int (*init_if) (struct mwl_priv *);
+	void (*cleanup_if) (struct mwl_priv *);
+	bool (*check_card_status) (struct mwl_priv *);
+	int (*prog_fw) (struct mwl_priv *);
+	int (*register_dev) (struct mwl_priv *);
+	void (*unregister_dev) (struct mwl_priv *);
+	void (*enable_int) (struct mwl_priv *);
+	void (*disable_int) (struct mwl_priv *);
+	void (*tx_done) (unsigned long);
+	int (*host_to_card) (struct mwl_priv *, int, struct sk_buff *);
+	int (*cmd_resp_wait_completed) (struct mwl_priv *, unsigned short);
+	int (*wakeup) (struct mwl_priv *);
+	int (*wakeup_complete) (struct mwl_priv *);
+	void (*flush_amsdu)(unsigned long);
+	int (*dbg_info)(struct mwl_priv *, char*, int, int);
+	int (*dbg_reg_access)(struct mwl_priv *, bool);
+
+	/* Interface specific functions */
+	void (*send_cmd) (struct mwl_priv *);
+	bool (*is_tx_available) (struct mwl_priv *, int);
+	void (*read_reg) (struct mwl_priv *, int, int, u32 *);
+	void (*write_reg) (struct mwl_priv *, int, int, u32);
+	void (*update_mp_end_port) (struct mwl_priv *, u16);
+	void (*cleanup_mpa_buf) (struct mwl_priv *);
+	int (*cmdrsp_complete) (struct mwl_priv *, struct sk_buff *);
+	int (*event_complete) (struct mwl_priv *, struct sk_buff *);
+	int (*init_fw_port) (struct mwl_priv *);
+	void (*card_reset) (struct mwl_priv *);
+	int (*reg_dump)(struct mwl_priv *, char *);
+	void (*device_dump)(struct mwl_priv *);
+	int (*clean_pcie_ring) (struct mwl_priv *);
+	void (*deaggr_pkt)(struct mwl_priv *, struct sk_buff *);
+	void (*multi_port_resync)(struct mwl_priv *);
+};
+
 struct mwl_priv {
 	struct ieee80211_hw *hw;
 	struct firmware *fw_ucode;
@@ -334,11 +382,10 @@ struct mwl_priv {
 	u16 max_tx_pow[SYSADPT_TX_POWER_LEVEL_TOTAL]; /* max tx power (dBm) */
 	u16 target_powers[SYSADPT_TX_POWER_LEVEL_TOTAL]; /* target powers   */
 
-	struct pci_dev *pdev;
+	void *intf;
+	struct mwl_if_ops if_ops;
 	struct device *dev;
-	void __iomem *iobase0; /* MEM Base Address Register 0  */
-	void __iomem *iobase1; /* MEM Base Address Register 1  */
-	u32 next_bar_num;
+	u8 host_if;
 
 	struct mutex fwcmd_mutex;    /* for firmware command         */
 	unsigned short *pcmd_buf;    /* pointer to CmdBuf (virtual)  */
@@ -352,22 +399,22 @@ struct mwl_priv {
 	/* for tx descriptor data  */
 	spinlock_t tx_desc_lock ____cacheline_aligned_in_smp;
 	struct mwl_desc_data desc_data[SYSADPT_NUM_OF_DESC_DATA];
-	struct sk_buff_head txq[SYSADPT_NUM_OF_DESC_DATA];
-	struct sk_buff_head delay_q;
 	/* number of descriptors owned by fw at any one time */
 	int fw_desc_cnt[SYSADPT_NUM_OF_DESC_DATA];
 
-	struct tasklet_struct tx_task;
-	struct tasklet_struct tx_done_task;
-	struct tasklet_struct rx_task;
-	struct tasklet_struct qe_task;
-	int txq_limit;
+	struct sk_buff_head delay_q;
+
 	bool is_tx_done_schedule;
-	int recv_limit;
-	bool is_rx_schedule;
 	bool is_qe_schedule;
 	u32 qe_trigger_num;
 	unsigned long qe_trigger_time;
+
+	struct sk_buff_head txq[SYSADPT_NUM_OF_DESC_DATA];
+
+	struct tasklet_struct rx_task;
+	bool is_rx_schedule;
+	int txq_limit;
+	int recv_limit;
 
 	struct timer_list period_timer;
 
@@ -435,6 +482,8 @@ struct mwl_priv {
 	u32 reg_value;
 	int tx_desc_num;
 #endif
+
+	struct firmware *cal_data;
 
 	/** Write pointer for TXBD ring */
 	unsigned int txbd_wrptr;

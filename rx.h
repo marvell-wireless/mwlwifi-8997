@@ -20,6 +20,12 @@
 
 int mwl_rx_init(struct ieee80211_hw *hw);
 void mwl_rx_deinit(struct ieee80211_hw *hw);
-void mwl_rx_recv(unsigned long data);
+void mwl_rx_prepare_status(struct mwl_rx_desc *pdesc,
+					 struct ieee80211_rx_status *status);
+struct mwl_vif *mwl_rx_find_vif_bss(struct mwl_priv *priv,
+						  u8 *bssid);
+void mwl_rx_remove_dma_header(struct sk_buff *skb, __le16 qos);
+void mwl_rx_enable_sta_amsdu(struct mwl_priv *priv,
+					   u8 *sta_addr);
 
 #endif /* _RX_H_ */

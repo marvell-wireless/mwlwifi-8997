@@ -75,10 +75,15 @@ static int mwl_mac80211_start(struct ieee80211_hw *hw)
 	int rc;
 
 	/* Enable TX and RX tasklets. */
-	tasklet_enable(&priv->tx_task);
-	tasklet_enable(&priv->tx_done_task);
+	if (priv->if_ops.ptx_task != NULL)
+		tasklet_enable(priv->if_ops.ptx_task);
+
 	tasklet_enable(&priv->rx_task);
-	tasklet_enable(&priv->qe_task);
+	if (priv->if_ops.ptx_done_task != NULL)
+		tasklet_enable(priv->if_ops.ptx_done_task);
+
+	if (priv->if_ops.pqe_task != NULL)
+		tasklet_enable(priv->if_ops.pqe_task);
 
 	/* Enable interrupts */
 	mwl_fwcmd_int_enable(hw);
@@ -110,10 +115,15 @@ static int mwl_mac80211_start(struct ieee80211_hw *hw)
 
 fwcmd_fail:
 	mwl_fwcmd_int_disable(hw);
-	tasklet_disable(&priv->tx_task);
-	tasklet_disable(&priv->tx_done_task);
+	if (priv->if_ops.ptx_task != NULL)
+		tasklet_disable(priv->if_ops.ptx_task);
+
+	if (priv->if_ops.ptx_done_task != NULL)
+		tasklet_disable(priv->if_ops.ptx_done_task);
+
+	if (priv->if_ops.pqe_task != NULL)
+		tasklet_disable(priv->if_ops.pqe_task);
 	tasklet_disable(&priv->rx_task);
-	tasklet_disable(&priv->qe_task);
 
 	return rc;
 }
@@ -130,16 +140,19 @@ static void mwl_mac80211_stop(struct ieee80211_hw *hw)
 	mwl_fwcmd_int_disable(hw);
 
 	/* Disable TX reclaim and RX tasklets. */
-	tasklet_disable(&priv->tx_task);
-	tasklet_disable(&priv->tx_done_task);
+	if (priv->if_ops.ptx_task != NULL)
+		tasklet_disable(priv->if_ops.ptx_task);
+
+	if (priv->if_ops.ptx_done_task != NULL)
+		tasklet_disable(priv->if_ops.ptx_done_task);
+
+	if (priv->if_ops.pqe_task != NULL)
+		tasklet_disable(priv->if_ops.pqe_task);
 	tasklet_disable(&priv->rx_task);
-	tasklet_disable(&priv->qe_task);
 
 	/* Return all skbs to mac80211 */
-	if (IS_PFU_ENABLED(priv->chip_type))
-		mwl_pfu_tx_done((unsigned long)hw);
-	else
-		mwl_tx_done((unsigned long)hw);
+	if (priv->if_ops.tx_done != NULL)
+		priv->if_ops.tx_done((unsigned long)hw);
 }
 
 static int mwl_mac80211_add_interface(struct ieee80211_hw *hw,

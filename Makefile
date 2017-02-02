@@ -1,17 +1,25 @@
-obj-m += mwlwifi.o
+obj-m += mwlwifi_comm.o
 
-mwlwifi-objs		+= main.o
-mwlwifi-objs		+= mac80211.o
-mwlwifi-objs		+= fwdl.o
-mwlwifi-objs		+= fwcmd.o
-mwlwifi-objs		+= tx.o
-mwlwifi-objs		+= rx.o
-mwlwifi-objs		+= isr.o
-mwlwifi-$(CONFIG_THERMAL)	+= thermal.o
-mwlwifi-$(CONFIG_DEBUG_FS)	+= debugfs.o
+mwlwifi_comm-objs		+= main.o
+mwlwifi_comm-objs		+= mac80211.o
+mwlwifi_comm-objs		+= fwdl.o
+mwlwifi_comm-objs		+= fwcmd.o
+mwlwifi_comm-objs		+= tx.o
+mwlwifi_comm-objs		+= rx.o
+mwlwifi_comm-objs		+= isr.o
+mwlwifi_comm-$(CONFIG_THERMAL)	+= thermal.o
+mwlwifi_comm-$(CONFIG_DEBUG_FS)	+= debugfs.o
 ifeq (1, $(BUILD_MFG))
-mwlwifi-objs += mfg.o
+mwlwifi_comm-objs += mfg.o
 endif
+
+mwlwifi_pcie-y += pcie.o
+mwlwifi_pcie-y += pfu.o
+mwlwifi_sdio-y += sdio.o
+#obj-$(CONFIG_MWLWIFI_PCIE) += mwlwifi_pcie.o
+obj-m += mwlwifi_pcie.o
+obj-m += mwlwifi_sdio.o
+
 
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
@@ -20,7 +28,7 @@ CC		= $(CROSS_COMPILE)gcc
 EXTRA_CFLAGS+= -I${KDIR}
 EXTRA_CFLAGS+= -O2 -funroll-loops -D__CHECK_ENDIAN__
 
-mwlwifi-objs	+= pfu.o
+EXTRA_CFLAGS+= -g -ggdb
 
 ifeq (1, $(BUILD_MFG))
 EXTRA_CFLAGS+= -DSUPPORT_MFG

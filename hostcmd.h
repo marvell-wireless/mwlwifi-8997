@@ -32,6 +32,7 @@
 #define HOSTCMD_CMD_802_11_RF_ANTENNA           0x0020
 #define HOSTCMD_CMD_802_11_PS_MODE              0x0021
 #define HOSTCMD_CMD_BROADCAST_SSID_ENABLE       0x0050 /* per-vif */
+#define HOSTCMD_CMD_SET_CFG                     0x008f
 #define HOSTCMD_CMD_SET_RF_CHANNEL              0x010a
 #define HOSTCMD_CMD_SET_AID                     0x010d /* per-vif */
 #define HOSTCMD_CMD_SET_INFRA_MODE              0x010e /* per-vif */
@@ -248,6 +249,19 @@ struct hostcmd_cmd_set_hw_spec {
 	__le32 features;
 	__le32 tx_wcb_num_per_queue;
 	__le32 total_rx_wcb;
+} __packed;
+
+/* HOSTCMD_CMD_SET_CFG */
+struct hostcmd_cmd_set_cfg {
+	struct hostcmd_header cmd_hdr;
+	/* Action */
+	__le16 action;
+	/* Type */
+	__le16 type;
+	/* Data length */
+	__le16 data_len;
+	/* Data */
+	u8 data[1];
 } __packed;
 
 /* HOSTCMD_CMD_802_11_GET_STAT */
