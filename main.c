@@ -637,6 +637,7 @@ static int mwl_wl_init(struct mwl_priv *priv)
 	priv->recv_limit = SYSADPT_RECEIVE_LIMIT;
 
 	priv->is_rx_schedule = false;
+	priv->cmd_timeout = false;
 
 	mutex_init(&priv->fwcmd_mutex);
 	spin_lock_init(&priv->tx_desc_lock);
@@ -742,13 +743,15 @@ void mwl_wl_deinit(struct mwl_priv *priv)
 	struct ieee80211_hw *hw = priv->hw;
 
 	del_timer_sync(&priv->period_timer);
-	priv->if_ops.cleanup_if(priv);
-	priv->if_ops.unregister_dev(priv);
+
 	ieee80211_unregister_hw(hw);
+
 	mwl_thermal_unregister(priv);
 
 	cancel_work_sync(&priv->watchdog_ba_handle);
+
 	mwl_fwcmd_reset(hw);
+
 }
 EXPORT_SYMBOL_GPL(mwl_wl_deinit);
 

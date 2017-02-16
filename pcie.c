@@ -311,7 +311,7 @@ static void mwl_rx_ring_cleanup(struct mwl_priv *priv)
 			dev_kfree_skb_any(rx_hndl->psk_buff);
 
 			wiphy_info(priv->hw->wiphy,
-				   "unmapped+free'd %i 0x%p 0x%x %i\n",
+				   "Rx: unmapped+free'd %i 0x%p 0x%x %i\n",
 				   i, rx_hndl->psk_buff->data,
 				   le32_to_cpu(rx_hndl->pdesc->pphys_buff_data),
 				   desc->rx_buf_size);
@@ -697,7 +697,7 @@ static void mwl_tx_ring_cleanup(struct mwl_priv *priv)
 						continue;
 
 					wiphy_info(priv->hw->wiphy,
-							"unmapped and free'd %i 0x%p 0x%x\n",
+							"Tx: unmapped and free'd %i 0x%p 0x%x\n",
 							i,
 							desc->tx_hndl[i].psk_buff->data,
 							le32_to_cpu(
@@ -875,6 +875,7 @@ static void mwl_pcie_cleanup(struct mwl_priv *priv)
 	struct pci_dev *pdev = card->pdev;
 
 	mwl_rx_deinit(priv->hw);
+
 	mwl_tx_deinit(priv->hw);
 
 	if (priv->pcmd_buf)
@@ -1854,9 +1855,16 @@ static void mwl_remove(struct pci_dev *pdev)
 	priv = hw->priv;
 
 	mwl_wl_deinit(priv);
-	pci_set_drvdata(pdev, NULL);
+
+	mwl_pcie_cleanup(priv);
+	mwl_pcie_unregister_dev(priv);
+
 	ieee80211_free_hw(hw);
+
+#if 0
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
+#endif
 
 }
 

@@ -166,6 +166,13 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 		return -EIO;
 	}
 
+	if (priv->cmd_timeout) {
+		wiphy_debug(priv->hw->wiphy,
+		"Skip CMD(%04xh, %s) - due to prev cmd_timeout\n",
+		cmd, mwl_fwcmd_get_cmd_string(cmd));
+		return -EIO;
+	}
+
 	if (!priv->in_send_cmd) {
 		priv->in_send_cmd = true;
 		wiphy_debug(priv->hw->wiphy, "DNLD_CMD=> (%04xh, %s)\n",
@@ -179,6 +186,8 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 		if (rc != 0) {
 			wiphy_err(priv->hw->wiphy, "timeout: 0x%04x\n", cmd);
 			priv->in_send_cmd = false;
+			priv->cmd_timeout = true;
+
 			return -EIO;
 		}
 		presp = (struct hostcmd_header *)&priv->pcmd_buf[
@@ -922,7 +931,8 @@ void mwl_fwcmd_reset(struct ieee80211_hw *hw)
 {
 	struct mwl_priv *priv = hw->priv;
 
-	priv->if_ops.card_reset(priv);
+	if (priv->if_ops.card_reset)
+		priv->if_ops.card_reset(priv);
 }
 EXPORT_SYMBOL_GPL(mwl_fwcmd_reset);
 
