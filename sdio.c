@@ -537,6 +537,24 @@ static void mwl_sdio_send_command(struct mwl_priv *priv)
 	u32 port;
 	int rc;
 	__le16 *pbuf = (__le16 *)priv->pcmd_buf;
+    int status;
+
+    /* Wait till the card informs CMD_DNLD_RDY interrupt except
+     * for get HW spec command */
+    if (cmd_hdr->command != 0x0003) {
+        status = wait_event_interruptible_timeout(card->cmd_wait_q.wait,
+                        (card->int_status & DN_LD_CMD_PORT_HOST_INT_STATUS),
+                        (12 * HZ));
+        if(status <= 0) {
+            wiphy_err(priv->hw->wiphy, "CMD_DNLD failure\n");
+            priv->in_send_cmd = false;
+            priv->cmd_timeout = true;
+            return;
+        }
+        else {
+            card->int_status &= ~DN_LD_CMD_PORT_HOST_INT_STATUS;
+        }
+    }
 
 	len = le16_to_cpu(cmd_hdr->len) +
 		INTF_CMDHEADER_LEN(INTF_HEADER_LEN)*sizeof(unsigned short);
@@ -1396,19 +1414,23 @@ static int mwl_sdio_process_int_status(struct mwl_priv *priv)
 
 	spin_lock_irqsave(&card->int_lock, flags);
 	sdio_ireg = card->int_status;
-	card->int_status = 0;
+	//card->int_status = 0;
 	spin_unlock_irqrestore(&card->int_lock, flags);
 
 	if (!sdio_ireg)
 		return ret;
 	/* Following interrupt is only for SDIO new mode */
-	if (sdio_ireg & DN_LD_CMD_PORT_HOST_INT_STATUS && card->cmd_sent)
-		card->cmd_sent = false;
+	if (sdio_ireg & DN_LD_CMD_PORT_HOST_INT_STATUS) {
+		//card->cmd_sent = false;
+        card->cmd_wait_q.status = 0;
+	    wake_up_interruptible(&card->cmd_wait_q.wait);
+    }
 
 	/* Command Response / Event is back */
 	if (sdio_ireg & UP_LD_CMD_PORT_HOST_INT_STATUS) {
 		struct cmd_header *cmd_hdr = (struct cmd_header *)
 			&priv->pcmd_buf[INTF_CMDHEADER_LEN(INTF_HEADER_LEN)];
+	    card->int_status &= ~UP_LD_CMD_PORT_HOST_INT_STATUS;
 		/* read the len of control packet */
 		rx_len = card->mp_regs[reg->cmd_rd_len_1] << 8;
 		rx_len |= (u16)card->mp_regs[reg->cmd_rd_len_0];
@@ -1446,6 +1468,7 @@ static int mwl_sdio_process_int_status(struct mwl_priv *priv)
 		bitmap |= ((u32) card->mp_regs[reg->wr_bitmap_1l]) << 16;
 		bitmap |= ((u32) card->mp_regs[reg->wr_bitmap_1u]) << 24;
 
+	    card->int_status &= ~DN_LD_HOST_INT_STATUS;
 		card->mp_wr_bitmap = bitmap;
 
 		if (card->data_sent &&
@@ -1472,6 +1495,7 @@ static int mwl_sdio_process_int_status(struct mwl_priv *priv)
 		bitmap |= ((u32) card->mp_regs[reg->rd_bitmap_1u]) << 24;
 		card->mp_rd_bitmap = bitmap;
 
+	    card->int_status &= ~UP_LD_HOST_INT_STATUS;
 		while (true) {
 			ret = mwl_get_rd_port(priv, &port);
 			if (ret)

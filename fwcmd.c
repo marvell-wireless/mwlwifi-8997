@@ -180,6 +180,9 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 		/* mwl_hex_dump((char*)cmd_hdr, cmd_hdr->len); */
 		
 		mwl_fwcmd_send_cmd(priv);
+        if(priv->cmd_timeout) {
+            return -EIO;
+        }
 		if (priv->if_ops.cmd_resp_wait_completed)
 			rc = priv->if_ops.cmd_resp_wait_completed(priv,
 				HOSTCMD_RESP_BIT | cmd);
