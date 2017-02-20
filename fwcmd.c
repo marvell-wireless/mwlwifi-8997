@@ -58,6 +58,7 @@ char *mwl_fwcmd_get_cmd_string(unsigned short cmd)
 		{ HOSTCMD_CMD_GET_HW_SPEC, "GetHwSpecifications" },
 		{ HOSTCMD_CMD_SET_HW_SPEC, "SetHwSepcifications" },
 		{ HOSTCMD_CMD_802_11_GET_STAT, "80211GetStat" },
+		{ HOSTCMD_CMD_MAC_REG_ACCESS, "MACRegAccess" },
 		{ HOSTCMD_CMD_BBP_REG_ACCESS, "BBPRegAccess" },
 		{ HOSTCMD_CMD_RF_REG_ACCESS, "RFRegAccess" },
 		{ HOSTCMD_CMD_802_11_RADIO_CONTROL, "80211RadioControl" },
@@ -1164,6 +1165,36 @@ int mwl_fwcmd_get_stat(struct ieee80211_hw *hw,
 	return 0;
 }
 
+int mwl_fwcmd_reg_mac(struct ieee80211_hw *hw, u8 flag, u32 reg, u32 *val)
+{
+    struct mwl_priv *priv = hw->priv;
+    struct hostcmd_cmd_mac_reg_access *pcmd;
+
+    pcmd = (struct hostcmd_cmd_mac_reg_access *)&priv->pcmd_buf[
+                INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
+
+    mutex_lock(&priv->fwcmd_mutex);
+
+    memset(pcmd, 0x00, sizeof(*pcmd));
+    pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_MAC_REG_ACCESS);
+    pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
+    pcmd->offset = cpu_to_le16(reg);
+    pcmd->action = cpu_to_le16(flag);
+    pcmd->value = *val;
+
+    if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_MAC_REG_ACCESS)) {
+        mutex_unlock(&priv->fwcmd_mutex);
+        wiphy_err(hw->wiphy, "failed execution\n");
+        return -EIO;
+    }    
+
+    *val = pcmd->value;
+
+    mutex_unlock(&priv->fwcmd_mutex);
+    return 0;
+}
+EXPORT_SYMBOL_GPL(mwl_fwcmd_reg_mac);
+
 int mwl_fwcmd_reg_bb(struct ieee80211_hw *hw, u8 flag, u32 reg, u32 *val)
 {
 	struct mwl_priv *priv = hw->priv;
@@ -1681,13 +1712,27 @@ int mwl_fwcmd_set_rf_channel(struct ieee80211_hw *hw,
 
 	mutex_unlock(&priv->fwcmd_mutex);
 
-	if (priv->sw_scanning) {
-		priv->survey_info_idx++;
-		mwl_fwcmd_get_survey(hw, priv->survey_info_idx);
-	} else {
-		mwl_fwcmd_get_survey(hw, 0);
-		memset(&priv->cur_survey_info, 0,
-		       sizeof(struct mwl_survey_info));
+	if (priv->sw_scanning && priv->cur_survey_info.filled) {
+        int i;
+        for (i = 0; i < priv->survey_info_idx; i++) {
+            if (priv->cur_survey_info.channel.hw_value
+					== priv->survey_info[i].channel.hw_value) {
+                break;
+            }
+        }
+		memcpy(&priv->survey_info[i], &priv->cur_survey_info,
+			   sizeof(struct mwl_survey_info));
+        if (i == priv->survey_info_idx)
+			priv->survey_info_idx++;
+	}
+
+	memset(&priv->cur_survey_info, 0x0, sizeof(struct mwl_survey_info));
+	memcpy(&priv->cur_survey_info.channel, conf->chandef.chan,
+		   sizeof(struct ieee80211_channel));
+    priv->cur_survey_valid = true;
+
+    if(mwl_fwcmd_get_survey(hw, 1)) {
+		return -EIO;
 	}
 
 	return 0;
@@ -3294,30 +3339,34 @@ int mwl_fwcmd_quiet_mode(struct ieee80211_hw *hw, bool enable, u32 period,
 	return 0;
 }
 
-void mwl_fwcmd_get_survey(struct ieee80211_hw *hw, int idx)
+int mwl_fwcmd_get_survey(struct ieee80211_hw *hw, int rstReg)
 {
-	struct mwl_priv *priv = hw->priv;
-	struct ieee80211_conf *conf = &hw->conf;
+    struct mwl_priv *priv = hw->priv;
 	struct mwl_survey_info *survey_info;
+    int last_read_val, cca_cnt_val, txpe_cnt_val;
 
-	if (idx)
-		survey_info = &priv->survey_info[idx - 1];
-	else
-		survey_info = &priv->cur_survey_info;
+    if(!priv->cur_survey_valid)
+        return 0;
 
-	memcpy(&survey_info->channel, conf->chandef.chan,
-	       sizeof(struct ieee80211_channel));
-	survey_info->filled = SURVEY_INFO_TIME |
-			      SURVEY_INFO_TIME_BUSY |
-			      SURVEY_INFO_TIME_TX |
-			      SURVEY_INFO_NOISE_DBM;
+    survey_info = &priv->cur_survey_info;
 
-// TODO: This will work for PCIe only => send FW CMD for this				  
-#if 0
-	survey_info->time_period += pci_read_mac_reg(priv, MCU_LAST_READ);
-	survey_info->time_busy += pci_read_mac_reg(priv, MCU_CCA_CNT);
-	survey_info->time_tx += pci_read_mac_reg(priv, MCU_TXPE_CNT);
-#endif
+    if(mwl_fwcmd_reg_mac(hw, WL_GET, MCU_LAST_READ, &last_read_val))
+		return -EIO;
+    if(mwl_fwcmd_reg_mac(hw, WL_GET, MCU_CCA_CNT, &cca_cnt_val))
+		return -EIO;
+    if(mwl_fwcmd_reg_mac(hw, WL_GET, MCU_TXPE_CNT, &txpe_cnt_val))
+		return -EIO;
 
-	survey_info->noise = priv->noise;
+    if(!rstReg) {
+		survey_info->filled = SURVEY_INFO_TIME |
+					SURVEY_INFO_TIME_BUSY |
+					SURVEY_INFO_TIME_TX |
+					SURVEY_INFO_NOISE_DBM;
+
+    	survey_info->time_period += last_read_val;
+    	survey_info->time_busy += cca_cnt_val;
+    	survey_info->time_tx += txpe_cnt_val;
+    	survey_info->noise = priv->noise;
+	}
+	return 0;
 }

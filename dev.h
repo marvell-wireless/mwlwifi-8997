@@ -423,6 +423,7 @@ struct mwl_priv {
 	int survey_info_idx;
 	struct mwl_survey_info survey_info[SYSADPT_MAX_NUM_CHANNELS];
 	struct mwl_survey_info cur_survey_info;
+    bool cur_survey_valid;
 
 	s8 noise;                    /* Most recently reported noise in dBm */
 

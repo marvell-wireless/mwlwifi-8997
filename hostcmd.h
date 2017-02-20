@@ -24,6 +24,7 @@
 #define HOSTCMD_CMD_GET_HW_SPEC                 0x0003
 #define HOSTCMD_CMD_SET_HW_SPEC                 0x0004
 #define HOSTCMD_CMD_802_11_GET_STAT             0x0014
+#define HOSTCMD_CMD_MAC_REG_ACCESS              0x0019
 #define HOSTCMD_CMD_BBP_REG_ACCESS              0x001a
 #define HOSTCMD_CMD_RF_REG_ACCESS               0x001b
 #define HOSTCMD_CMD_802_11_RADIO_CONTROL        0x001c
@@ -303,6 +304,15 @@ struct hostcmd_cmd_802_11_get_stat {
 	__le32 tx_cts_count;
 } __packed;
 
+/* HOSTCMD_CMD_MAC_REG_ACCESS */
+struct hostcmd_cmd_mac_reg_access {
+    struct hostcmd_header cmd_hdr;
+    __le16 action;
+    __le16 offset;
+    u8 value;
+    u8 reserverd[3];
+} __packed;
+ 
 /* HOSTCMD_CMD_BBP_REG_ACCESS */
 struct hostcmd_cmd_bbp_reg_access {
 	struct hostcmd_header cmd_hdr;

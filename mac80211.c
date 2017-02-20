@@ -294,6 +294,9 @@ static int mwl_mac80211_config(struct ieee80211_hw *hw,
 							   STOP_DETECT_RADAR);
 		}
 
+        rc = mwl_fwcmd_get_survey(hw, 0);
+		if (rc)
+			goto out;
 		rc = mwl_fwcmd_set_rf_channel(hw, conf);
 		if (rc)
 			goto out;
@@ -587,16 +590,26 @@ static int mwl_mac80211_get_survey(struct ieee80211_hw *hw,
 	struct mwl_priv *priv = hw->priv;
 	struct mwl_survey_info *survey_info;
 
-	if (priv->survey_info_idx) {
-		if (idx >= priv->survey_info_idx) {
-			priv->survey_info_idx = 0;
-			return -ENOENT;
-		}
-		survey_info = &priv->survey_info[idx];
+	if ((priv->survey_info_idx) && (idx < priv->survey_info_idx)) {
+        survey_info = &priv->survey_info[idx];
 	} else {
-		if (idx != 0)
-			return -ENOENT;
-		mwl_fwcmd_get_survey(hw, 0);
+        if (idx > priv->survey_info_idx) {
+			priv->survey_info_idx = 0;
+            return -ENOENT;
+        } else if (idx == priv->survey_info_idx) {
+            int i;
+            for (i = 0; i < priv->survey_info_idx; i++) {
+                if (priv->cur_survey_info.channel.hw_value
+                        == priv->survey_info[i].channel.hw_value) {
+                    priv->survey_info_idx = 0;
+                    return -ENOENT;
+                }
+            }
+        }
+
+		if(mwl_fwcmd_get_survey(hw, 0)) {
+			return -EIO;
+		}
 		survey_info = &priv->cur_survey_info;
 		if (!(hw->conf.flags & IEEE80211_CONF_OFFCHANNEL))
 			survey->filled |= SURVEY_INFO_IN_USE;
@@ -854,6 +867,7 @@ static void mwl_mac80211_sw_scan_start(struct ieee80211_hw *hw,
 
 	priv->sw_scanning = true;
 	priv->survey_info_idx = 0;
+    priv->cur_survey_valid = false;
 }
 
 static void mwl_mac80211_sw_scan_complete(struct ieee80211_hw *hw,

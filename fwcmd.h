@@ -83,6 +83,8 @@ int mwl_fwcmd_set_cfg_data(struct ieee80211_hw *hw, __le16 type);
 int mwl_fwcmd_get_stat(struct ieee80211_hw *hw,
 		       struct ieee80211_low_level_stats *stats);
 
+int mwl_fwcmd_reg_mac(struct ieee80211_hw *hw, u8 flag, u32 reg, u32 *val);
+
 int mwl_fwcmd_reg_bb(struct ieee80211_hw *hw, u8 flag, u32 reg, u32 *val);
 
 int mwl_fwcmd_reg_rf(struct ieee80211_hw *hw, u8 flag, u32 reg, u32 *val);
@@ -247,7 +249,7 @@ int mwl_fwcmd_get_pwr_tbl_sc4(struct ieee80211_hw *hw,
 int mwl_fwcmd_quiet_mode(struct ieee80211_hw *hw, bool enable, u32 period,
 			 u32 duration, u32 next_offset);
 
-void mwl_fwcmd_get_survey(struct ieee80211_hw *hw, int idx);
+int mwl_fwcmd_get_survey(struct ieee80211_hw *hw, int rstReg);
 
 void mwl_hex_dump(const void *buf, size_t len);
 
