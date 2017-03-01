@@ -22,6 +22,7 @@
 
 #include "sysadpt.h"
 #include "dev.h"
+#include "pcie.h"
 #include "fwdl.h"
 #include "fwcmd.h"
 #include "tx.h"
@@ -325,9 +326,10 @@ static void mwl_process_of_dts(struct mwl_priv *priv)
 #ifdef CONFIG_OF
 	struct property *prop;
 	u32 prop_value;
+	struct mwl_pcie_card *card = priv->intf;
 
 	priv->dt_node =
-		of_find_node_by_name(pci_bus_to_OF_node(priv->pdev->bus),
+		of_find_node_by_name(pci_bus_to_OF_node(card->pdev->bus),
 				     "mwlwifi");
 	if (!priv->dt_node)
 		return;
