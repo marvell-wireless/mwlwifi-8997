@@ -378,6 +378,12 @@ struct hostcmd_cmd_802_11_ps_mode {
 struct hostcmd_cmd_broadcast_ssid_enable {
 	struct hostcmd_header cmd_hdr;
 	__le32 enable;
+	/* Hidden SSID Options- 
+	** 0: Do not Hide
+	** 1: Hide SSID by using zero len SSID element
+	** 2: Hide SSID by using correct len in SSID element but zero out complete SSID 
+	*/
+	 __le32 hidden_ssid_info;
 } __packed;
 
 /* HOSTCMD_CMD_SET_RF_CHANNEL */

@@ -521,6 +521,10 @@ static void mwl_fwcmd_parse_beacon(struct mwl_priv *priv,
 		}
 
 		switch (id) {
+		case WLAN_EID_SSID:
+			beacon_info->ie_ssid_len = (elen + 2);
+			beacon_info->ie_ssid_ptr = (pos - 2);
+			break;
 		case WLAN_EID_COUNTRY:
 			beacon_info->ie_country_len = (elen + 2);
 			beacon_info->ie_country_ptr = (pos - 2);
@@ -1578,13 +1582,11 @@ int mwl_fwcmd_rf_antenna(struct ieee80211_hw *hw, int dir, int antenna)
 }
 
 int mwl_fwcmd_broadcast_ssid_enable(struct ieee80211_hw *hw,
-				    struct ieee80211_vif *vif, bool enable)
+				   struct mwl_vif *mwl_vif,
+				   struct ieee80211_bss_conf *bss_conf)
 {
 	struct mwl_priv *priv = hw->priv;
-	struct mwl_vif *mwl_vif;
 	struct hostcmd_cmd_broadcast_ssid_enable *pcmd;
-
-	mwl_vif = mwl_dev_get_vif(vif);
 
 	pcmd = (struct hostcmd_cmd_broadcast_ssid_enable *)&priv->pcmd_buf[
 			INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
@@ -1595,7 +1597,22 @@ int mwl_fwcmd_broadcast_ssid_enable(struct ieee80211_hw *hw,
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_BROADCAST_SSID_ENABLE);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 	pcmd->cmd_hdr.macid = mwl_vif->macid;
-	pcmd->enable = cpu_to_le32(enable);
+
+	if ((bss_conf->ssid[0] != '\0') &&
+	    (bss_conf->ssid_len != 0) &&
+	    (!bss_conf->hidden_ssid))
+		pcmd->enable = cpu_to_le32(true);
+	else
+		pcmd->enable = cpu_to_le32(false);
+
+	if (bss_conf->hidden_ssid) {
+		if((mwl_vif->beacon_info.ie_ssid_len) - 2)
+			pcmd->hidden_ssid_info = cpu_to_le32(NL80211_HIDDEN_SSID_ZERO_CONTENTS);
+		else
+			pcmd->hidden_ssid_info = cpu_to_le32(NL80211_HIDDEN_SSID_ZERO_LEN);
+	}
+	else
+		pcmd->hidden_ssid_info = cpu_to_le32(NL80211_HIDDEN_SSID_NOT_IN_USE);
 
 	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_BROADCAST_SSID_ENABLE)) {
 		mutex_unlock(&priv->fwcmd_mutex);
@@ -2195,6 +2212,9 @@ int mwl_fwcmd_set_beacon(struct ieee80211_hw *hw,
 	mwl_fwcmd_parse_beacon(priv, mwl_vif, beacon, len);
 
 	if (!b_inf->valid)
+		goto err;
+
+	if (mwl_fwcmd_broadcast_ssid_enable(hw, mwl_vif, &vif->bss_conf))
 		goto err;
 
 	if (mwl_fwcmd_set_ies(priv, mwl_vif))

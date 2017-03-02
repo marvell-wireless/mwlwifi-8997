@@ -515,6 +515,7 @@ struct beacon_info {
 	u8 op_rate_set[SYSADPT_MAX_DATA_RATES_G];
 	u8 ie_list_ht[148];
 	u8 ie_list_vht[24];
+	u8 *ie_ssid_ptr;
 	u8 *ie_wmm_ptr;
 	u8 *ie_wsc_ptr;
 	u8 *ie_rsn_ptr;
@@ -522,6 +523,7 @@ struct beacon_info {
 	u8 *ie_ht_ptr;
 	u8 *ie_vht_ptr;
 	u8 *ie_country_ptr;
+	u8 ie_ssid_len;
 	u8 ie_wmm_len;
 	u8 ie_wsc_len;
 	u8 ie_rsn_len;
