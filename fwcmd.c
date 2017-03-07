@@ -2639,6 +2639,9 @@ int mwl_fwcmd_encryption_set_key(struct ieee80211_hw *hw,
 			mwl_vif->wep_key_conf[idx].enabled = 1;
 		}
 
+        if (vif->type == NL80211_IFTYPE_STATION) {
+            ether_addr_copy(mwl_vif->bssid, vif->bss_conf.bssid);
+        }
 		keymlen = key->keylen;
 		action = ENCR_ACTION_TYPE_SET_KEY;
 		break;

@@ -377,6 +377,11 @@ static void mwl_set_ht_caps(struct mwl_priv *priv,
 	band->ht_cap.cap |= IEEE80211_HT_CAP_SGI_40;
 	band->ht_cap.cap |= IEEE80211_HT_CAP_DSSSCCK40;
 
+	if (priv->chip_type == MWL8997) {
+		band->ht_cap.cap |= IEEE80211_HT_CAP_TX_STBC;
+		band->ht_cap.cap |= (1 << IEEE80211_HT_CAP_RX_STBC_SHIFT);
+	}
+
 	ieee80211_hw_set(hw, AMPDU_AGGREGATION);
 	ieee80211_hw_set(hw, SUPPORTS_AMSDU_IN_AMPDU);
 	band->ht_cap.ampdu_factor = IEEE80211_HT_MAX_AMPDU_64K;
@@ -407,6 +412,10 @@ static void mwl_set_vht_caps(struct mwl_priv *priv,
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK;
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_RX_ANTENNA_PATTERN;
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_TX_ANTENNA_PATTERN;
+
+	if (priv->chip_type == MWL8997) {
+		band->vht_cap.cap |= IEEE80211_VHT_CAP_TXSTBC;
+	}
 
 	if (priv->chip_type == MWL8964) {
 		band->vht_cap.cap |= IEEE80211_VHT_CAP_SHORT_GI_160;

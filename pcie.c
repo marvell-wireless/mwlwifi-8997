@@ -60,7 +60,7 @@ static int mwl_tx_ring_init(struct mwl_priv *priv);
 static void mwl_tx_ring_cleanup(struct mwl_priv *priv);
 static void mwl_tx_ring_free(struct mwl_priv *priv);
 
-#define MAX_WAIT_FW_COMPLETE_ITERATIONS         2000
+#define MAX_WAIT_FW_COMPLETE_ITERATIONS         4000
 
 static irqreturn_t mwl_pcie_isr(int irq, void *dev_id);
 static struct pci_device_id mwl_pci_id_tbl[] = {
@@ -1106,10 +1106,9 @@ static int mwl_pcie_cmd_resp_wait_completed(struct mwl_priv *priv,
 	unsigned short int_code = 0;
 
 	do {
+        usleep_range(500, 1000);        
 		int_code = le16_to_cpu(*((__le16 *)&priv->pcmd_buf[
 				INTF_CMDHEADER_LEN(INTF_HEADER_LEN)+0]));
-
-		usleep_range(1000, 2000);
 	} while ((int_code != cmd) && (--curr_iteration));
 
 	if (curr_iteration == 0) {
@@ -1119,7 +1118,8 @@ static int mwl_pcie_cmd_resp_wait_completed(struct mwl_priv *priv,
 		return -EIO;
 	}
 
-	usleep_range(3000, 5000);
+    if (priv->chip_type != MWL8997)
+        usleep_range(3000, 5000);
 
 	return 0;
 }
