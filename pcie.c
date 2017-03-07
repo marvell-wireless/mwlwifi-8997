@@ -401,10 +401,8 @@ void mwl_pcie_rx_recv(unsigned long data)
 	curr_hndl = desc->pnext_rx_hndl;
 
 	if (!curr_hndl) {
-		status_mask = readl(card->iobase1 +
-				    MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
-		writel(status_mask | MACREG_A2HRIC_BIT_RX_RDY,
-		       card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
+		set_bit(MACREG_A2HRIC_BIT_RX_RDY,
+		(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
 
 		priv->is_rx_schedule = false;
 		wiphy_warn(hw->wiphy, "busy or no receiving packets\n");
@@ -532,10 +530,9 @@ out:
 
 	desc->pnext_rx_hndl = curr_hndl;
 
-	status_mask = readl(card->iobase1 +
-			    MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
-	writel(status_mask | MACREG_A2HRIC_BIT_RX_RDY,
-	       card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
+	set_bit(MACREG_A2HRIC_BIT_RX_RDY,
+	(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
+
 	priv->is_rx_schedule = false;
 	return;
 }
@@ -1335,10 +1332,8 @@ void mwl_non_pfu_tx_done(unsigned long data)
 	if (priv->is_tx_done_schedule) {
 		u32 status_mask;
 
-		status_mask = readl(card->iobase1 +
-				    MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
-		writel(status_mask | MACREG_A2HRIC_BIT_TX_DONE,
-		       card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
+		set_bit(MACREG_A2HRIC_BIT_TX_DONE,
+		(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
 
 		tasklet_schedule(priv->if_ops.ptx_task);
 		priv->is_tx_done_schedule = false;
@@ -1466,10 +1461,8 @@ void mwl_pfu_tx_done(unsigned long data)
 	 if (priv->is_tx_done_schedule) {
 		u32 status_mask;
 
-		status_mask = readl(card->iobase1 +
-			MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
-		writel(status_mask | MACREG_A2HRIC_BIT_TX_DONE,
-			card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
+		set_bit(MACREG_A2HRIC_BIT_TX_DONE,
+		(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
 
 		tasklet_schedule(priv->if_ops.ptx_task);
 		priv->is_tx_done_schedule = false;
@@ -1519,10 +1512,9 @@ irqreturn_t mwl_pcie_isr(int irq, void *dev_id)
 
 		if (int_status & MACREG_A2HRIC_BIT_TX_DONE) {
 			if (!priv->is_tx_done_schedule) {
-				status = readl(int_status_mask);
-					writel((status &
-						~MACREG_A2HRIC_BIT_TX_DONE),
-				       int_status_mask);
+				clear_bit(MACREG_A2HRIC_BIT_TX_DONE,
+				(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
+
 					tasklet_schedule(
 						priv->if_ops.ptx_done_task);
 				priv->is_tx_done_schedule = true;
@@ -1531,10 +1523,8 @@ irqreturn_t mwl_pcie_isr(int irq, void *dev_id)
 
 		if (int_status & MACREG_A2HRIC_BIT_RX_RDY) {
 			if (!priv->is_rx_schedule) {
-				status = readl(int_status_mask);
-					writel((status &
-						~MACREG_A2HRIC_BIT_RX_RDY),
-				       int_status_mask);
+				clear_bit(MACREG_A2HRIC_BIT_RX_RDY,
+					(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
 				tasklet_schedule(&priv->rx_task);
 				priv->is_rx_schedule = true;
 			}
@@ -1549,10 +1539,8 @@ irqreturn_t mwl_pcie_isr(int irq, void *dev_id)
 			if (!priv->is_qe_schedule) {
 				if (time_after(jiffies,
 					       (priv->qe_trigger_time + 1))) {
-					status = readl(int_status_mask);
-					writel((status &
-					       ~MACREG_A2HRIC_BIT_QUE_EMPTY),
-					       int_status_mask);
+					clear_bit(MACREG_A2HRIC_BIT_QUE_EMPTY,
+		(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
 						tasklet_schedule(
 						    priv->if_ops.pqe_task);
 					priv->qe_trigger_num++;
@@ -1666,9 +1654,10 @@ static void mwl_pcie_tx_flush_amsdu(unsigned long data)
 	int i;
 	struct mwl_amsdu_frag *amsdu_frag;
 
+// TODO: RR: Take spin_lock_bh() here ??
+	spin_lock(&priv->tx_desc_lock);
 	spin_lock(&priv->sta_lock);
 	list_for_each_entry(sta_info, &priv->sta_list, list) {
-		spin_lock(&priv->tx_desc_lock);
 		spin_lock(&sta_info->amsdu_lock);
 		for (i = 0; i < SYSADPT_TX_WMM_QUEUES; i++) {
 			amsdu_frag = &sta_info->amsdu_ctrl.frag[i];
@@ -1688,14 +1677,12 @@ static void mwl_pcie_tx_flush_amsdu(unsigned long data)
 			}
 		}
 		spin_unlock(&sta_info->amsdu_lock);
-		spin_unlock(&priv->tx_desc_lock);
 	}
 	spin_unlock(&priv->sta_lock);
+	spin_unlock(&priv->tx_desc_lock);
 
-	status_mask = readl(card->iobase1 +
-			    MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
-	writel(status_mask | MACREG_A2HRIC_BIT_QUE_EMPTY,
-	       card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK);
+	set_bit(MACREG_A2HRIC_BIT_QUE_EMPTY,
+		(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
 
 	priv->is_qe_schedule = false;
 }

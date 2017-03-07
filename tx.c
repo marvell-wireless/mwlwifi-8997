@@ -1011,15 +1011,15 @@ pr_alert("wrptr=0x%x, rdptr=0x%x not_full=%d\n",
 				if (mwl_tx_available(priv, num)) {
 					sta_info->amsdu_ctrl.frag[num].num = 0;
 					sta_info->amsdu_ctrl.frag[num].cur_pos = NULL;
-					spin_unlock_bh(&priv->tx_desc_lock);
 					spin_unlock_bh(&sta_info->amsdu_lock);
 					spin_unlock(&priv->sta_lock);
+					spin_unlock_bh(&priv->tx_desc_lock);
 //	wiphy_err(priv->hw->wiphy, "[call mwl_tx_skb2]\n");
 					mwl_tx_skb(priv, num,
 						sta_info->amsdu_ctrl.frag[num].skb);
+					spin_lock_bh(&priv->tx_desc_lock);
 					spin_lock(&priv->sta_lock);
 					spin_lock_bh(&sta_info->amsdu_lock);
-					spin_lock_bh(&priv->tx_desc_lock);
 				}
 			}
 			spin_unlock_bh(&sta_info->amsdu_lock);
