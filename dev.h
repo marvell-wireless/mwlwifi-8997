@@ -199,6 +199,8 @@ struct mwl_hw_data {
 #define MWL_TX_RATE_RATEIDMCS_MASK    0x00007F00
 #define MWL_TX_RATE_RATEIDMCS_SHIFT   8
 
+#define MWL_TX_WCB_FLAGS_DONT_ENCRYPT 0x00000001 
+
 struct mwl_tx_desc {
 	u8 data_rate;
 	u8 tx_priority;
@@ -221,7 +223,7 @@ struct mwl_tx_desc {
 	u8 packet_id;
 	__le16 packet_len_and_retry;
 	__le16 packet_rate_info;
-	__le32 reserved4;
+	__le32 flags;
 	__le32 status;
 } __packed;
 

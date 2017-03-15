@@ -1139,10 +1139,12 @@ static int mwl_pcie_host_to_card(struct mwl_priv *priv, int desc_num,
 	struct mwl_tx_hndl *tx_hndl = NULL;
 	struct mwl_tx_desc *tx_desc;
 	struct mwl_tx_ctrl *tx_ctrl;
+	struct ieee80211_tx_info *tx_info;
+
 	dma_addr_t dma;
         unsigned int wrindx;
         const unsigned int num_tx_buffs = MLAN_MAX_TXRX_BD << PCIE_TX_START_PTR;
-
+	tx_info = IEEE80211_SKB_CB(tx_skb);
 	tx_ctrl = (struct mwl_tx_ctrl *)&IEEE80211_SKB_CB(tx_skb)->status;
 
 	if (!IS_PFU_ENABLED(priv->chip_type)) {
@@ -1153,6 +1155,10 @@ static int mwl_pcie_host_to_card(struct mwl_priv *priv, int desc_num,
 		struct mwl_tx_pfu_dma_data *dma_data =
 			(struct mwl_tx_pfu_dma_data *)tx_skb->data;
 		tx_desc = &dma_data->tx_desc;
+	}
+
+	if (tx_info->flags & IEEE80211_TX_INTFL_DONT_ENCRYPT) {
+		tx_desc->flags |= MWL_TX_WCB_FLAGS_DONT_ENCRYPT;
 	}
 	
 	tx_desc->tx_priority = tx_ctrl->tx_priority;

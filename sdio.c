@@ -2081,9 +2081,11 @@ mwl_process_txdesc(struct mwl_priv *priv,
 {
 	struct mwl_tx_desc *tx_desc;
 	struct mwl_tx_ctrl *tx_ctrl;
+	struct ieee80211_tx_info *tx_info;
 	u8 *ptr;
 	int headroom = INTF_HEADER_LEN;
 
+	tx_info = IEEE80211_SKB_CB(skb);
 	tx_ctrl = (struct mwl_tx_ctrl *)&IEEE80211_SKB_CB(skb)->status;
 	ptr = (u8 *)skb->data;
 
@@ -2095,6 +2097,10 @@ mwl_process_txdesc(struct mwl_priv *priv,
 	tx_desc->tx_priority = tx_ctrl->tx_priority;
 	tx_desc->qos_ctrl = cpu_to_le16(tx_ctrl->qos_ctrl);
 	tx_desc->pkt_len = cpu_to_le16(skb->len);
+
+	if (tx_info->flags & IEEE80211_TX_INTFL_DONT_ENCRYPT) {
+		tx_desc->flags |= MWL_TX_WCB_FLAGS_DONT_ENCRYPT;
+	}
 
 	tx_desc->packet_info = 0;
 	tx_desc->data_rate = 0;
