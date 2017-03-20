@@ -756,7 +756,7 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 			wiphy_err(priv->hw->wiphy,
 				    "FW downloading \t"
 				    "poll status timeout @ %d\n", offset);
-			goto done;
+			goto err_dnld;
 		}
 
 		/* More data? */
@@ -771,7 +771,7 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 					    "dev BASE0 register read failed:\t"
 					    "base0=%#04X(%d). Terminating dnld\n",
 					    base0, base0);
-				goto done;
+				goto err_dnld;
 			}
 			ret = mwl_read_reg(priv, reg->base_1_reg,
 					       &base1);
@@ -780,7 +780,7 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 					    "dev BASE1 register read failed:\t"
 					    "base1=%#04X(%d). Terminating dnld\n",
 					    base1, base1);
-				goto done;
+				goto err_dnld;
 			}
 			len = (u16) (((base1 & 0xff) << 8) | (base0 & 0xff));
 
@@ -797,7 +797,7 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 				    "FW dnld failed @ %d, invalid length %d\n",
 				    offset, len);
 			ret = -1;
-			goto done;
+			goto err_dnld;
 		}
 
 		txlen = len;
@@ -809,7 +809,7 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 					    "FW dnld failed @ %d, over max retry\n",
 					    offset);
 				ret = -1;
-				goto done;
+				goto err_dnld;
 			}
 			wiphy_err(priv->hw->wiphy,
 				    "CRC indicated by the helper:\t"
@@ -844,7 +844,7 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 					    "write CFG reg failed\n");
 
 			ret = -1;
-			goto done;
+			goto err_dnld;
 		}
 
 		offset += txlen;
@@ -855,7 +855,6 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 	wiphy_err(priv->hw->wiphy,
 		    "info: FW download over, size %d bytes\n", offset);
 
-#if 1
 	ret = mwl_check_fw_status(priv, MAX_FIRMWARE_POLL_TRIES);
 	if (ret) {
 		wiphy_err(priv->hw->wiphy,
@@ -865,28 +864,13 @@ static int mwl_sdio_program_firmware(struct mwl_priv *priv)
 	 * Otherwise there may be abnormal interrupt DN_LD_HOST_INT_MASK
 	 */
 	mwl_sdio_enable_int(priv);
-#else
+	kfree(fwbuf);
 
-	wiphy_err(priv->hw->wiphy,
-		    "Skip FW ready check\n");
-#endif
-	
+	return ret;
 
-#if 0
-{
-	ret = -10;
-int i;
-for(i=0;i<15;i++)
-{
 
-	wiphy_err(priv->hw->wiphy,
-			"Wait [%d]\n", i);
-mdelay(1000);
-}
-}
-#endif 
-
-done:
+err_dnld:
+	sdio_release_host(card->func);
 	kfree(fwbuf);
 	return ret;
 }
