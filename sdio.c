@@ -1846,7 +1846,6 @@ static void mwl_sdio_rx_recv(unsigned long data)
 static int mwl_write_data_complete(struct mwl_priv *priv,
 				struct sk_buff *skb)
 {
-	struct mwl_sdio_card *card = priv->intf;
 	struct ieee80211_hw *hw = (struct ieee80211_hw *)priv->hw;
 	struct mwl_tx_ctrl *tx_ctrl;
 	struct ieee80211_tx_info *info;
@@ -1858,7 +1857,6 @@ static int mwl_write_data_complete(struct mwl_priv *priv,
 
 	if (skb == NULL)
 		return 0;
-	rate = card->rate_info;
 	dma_data = (struct mwl_dma_data *)
 		&data[INTF_HEADER_LEN + sizeof(struct mwl_tx_desc)];
 	wh = &dma_data->wh;
@@ -1868,6 +1866,7 @@ static int mwl_write_data_complete(struct mwl_priv *priv,
 
 	if (ieee80211_is_data(wh->frame_control) ||
 		ieee80211_is_data_qos(wh->frame_control)) {
+		rate = TX_COMP_RATE_FOR_DATA;
 		tx_ctrl = (struct mwl_tx_ctrl *)&info->status;
 		amsdu_pkts = (struct sk_buff_head *)
 					tx_ctrl->amsdu_pkts;

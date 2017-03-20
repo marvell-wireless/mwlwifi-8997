@@ -1376,7 +1376,10 @@ wiphy_err(priv->hw->wiphy, "unmap: skb=%p vdata=%p pdata=%p plen=%d!\n",
 			tx_ring_entry->len,
 			PCI_DMA_TODEVICE);
 
+#if 0
 	rate = le32_to_cpu(tx_desc->rate_info);
+#endif
+
 	tx_desc->pkt_ptr = 0;
 	tx_desc->pkt_len = 0;
 	tx_desc->status = cpu_to_le32(EAGLE_TXD_STATUS_IDLE);
@@ -1391,6 +1394,7 @@ wiphy_err(priv->hw->wiphy, "unmap: skb=%p vdata=%p pdata=%p plen=%d!\n",
 
 	if (ieee80211_is_data(tr->wh.frame_control) ||
 			ieee80211_is_data_qos(tr->wh.frame_control)) {
+		rate = TX_COMP_RATE_FOR_DATA;
 		tx_ctrl = (struct mwl_tx_ctrl *)&info->status;
 		amsdu_pkts = (struct sk_buff_head *)
 			tx_ctrl->amsdu_pkts;

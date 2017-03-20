@@ -38,19 +38,6 @@
 		(iv32)++; \
 }
 
-/* Transmit rate information constants */
-#define TX_RATE_FORMAT_LEGACY         0
-#define TX_RATE_FORMAT_11N            1
-#define TX_RATE_FORMAT_11AC           2
-
-#define TX_RATE_BANDWIDTH_20          0
-#define TX_RATE_BANDWIDTH_40          1
-#define TX_RATE_BANDWIDTH_80          2
-#define TX_RATE_BANDWIDTH_160         3
-
-#define TX_RATE_INFO_STD_GI           0
-#define TX_RATE_INFO_SHORT_GI         1
-
 enum {
 	IEEE_TYPE_MANAGEMENT = 0,
 	IEEE_TYPE_CONTROL,
@@ -517,7 +504,7 @@ static inline struct sk_buff *mwl_tx_do_amsdu(struct mwl_priv *priv,
 inline void mwl_tx_prepare_info(struct ieee80211_hw *hw, u32 rate,
 				       struct ieee80211_tx_info *info)
 {
-	u32 format, bandwidth, short_gi, rate_id;
+	u32 format, bandwidth, short_gi, rate_id, nss;
 
 	ieee80211_tx_info_clear_status(info);
 
@@ -535,6 +522,8 @@ inline void mwl_tx_prepare_info(struct ieee80211_hw *hw, u32 rate,
 			MWL_TX_RATE_SHORTGI_SHIFT;
 		rate_id = (rate & MWL_TX_RATE_RATEIDMCS_MASK) >>
 			MWL_TX_RATE_RATEIDMCS_SHIFT;
+		nss = (rate & MWL_TX_RATE_NSS_MASK) >>
+			MWL_TX_RATE_NSS_SHIFT;
 
 		info->status.rates[0].idx = rate_id;
 		if (format == TX_RATE_FORMAT_LEGACY) {
@@ -542,7 +531,11 @@ inline void mwl_tx_prepare_info(struct ieee80211_hw *hw, u32 rate,
 			    BAND_24_CHANNEL_NUM) {
 				info->status.rates[0].idx -= 5;
 			}
+		} else if (format == TX_RATE_FORMAT_11AC) {
+			ieee80211_rate_set_vht(
+				&info->status.rates[0], rate_id, nss);
 		}
+
 		if (format == TX_RATE_FORMAT_11N)
 			info->status.rates[0].flags |=
 				IEEE80211_TX_RC_MCS;

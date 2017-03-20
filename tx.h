@@ -18,6 +18,19 @@
 #ifndef _TX_H_
 #define _TX_H_
 
+/* Tx Rate to be indicated to mac80211 - For KF2 PCIe & SDIO,
+** driver has no way of knowing the rate at which the pkt was Tx'ed.
+** Use hardcoded max value for this
+*/
+
+/* VHT/2SS/BW80/MCS9/SGI */
+#define TX_COMP_RATE_FOR_DATA ((9 << MWL_TX_RATE_RATEIDMCS_SHIFT) |\
+	(TX_RATE_INFO_SHORT_GI << MWL_TX_RATE_SHORTGI_SHIFT) |\
+	(TX_RATE_BANDWIDTH_80 << MWL_TX_RATE_BANDWIDTH_SHIFT) |\
+	(2 << MWL_TX_RATE_NSS_SHIFT) |\
+	TX_RATE_FORMAT_11AC);
+
+
 int mwl_tx_init(struct ieee80211_hw *hw);
 void mwl_tx_deinit(struct ieee80211_hw *hw);
 void mwl_tx_xmit(struct ieee80211_hw *hw,

@@ -198,6 +198,22 @@ struct mwl_hw_data {
 #define MWL_TX_RATE_SHORTGI_SHIFT     6
 #define MWL_TX_RATE_RATEIDMCS_MASK    0x00007F00
 #define MWL_TX_RATE_RATEIDMCS_SHIFT   8
+#define MWL_TX_RATE_NSS_MASK    0x00030000
+#define MWL_TX_RATE_NSS_SHIFT   16
+
+/* Transmit rate information constants */
+#define TX_RATE_FORMAT_LEGACY         0
+#define TX_RATE_FORMAT_11N            1
+#define TX_RATE_FORMAT_11AC           2
+
+#define TX_RATE_BANDWIDTH_20          0
+#define TX_RATE_BANDWIDTH_40          1
+#define TX_RATE_BANDWIDTH_80          2
+#define TX_RATE_BANDWIDTH_160         3
+
+#define TX_RATE_INFO_STD_GI           0
+#define TX_RATE_INFO_SHORT_GI         1
+
 
 #define MWL_TX_WCB_FLAGS_DONT_ENCRYPT 0x00000001 
 
