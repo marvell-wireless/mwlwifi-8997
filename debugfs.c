@@ -24,6 +24,8 @@
 #include "thermal.h"
 #include "debugfs.h"
 
+#include "pcie.h"
+
 #define MWLWIFI_DEBUGFS_ADD_FILE(name) do { \
 	if (!debugfs_create_file(#name, 0644, priv->debugfs_phy, \
 				 priv, &mwl_debugfs_##name##_fops)) \
@@ -142,6 +144,42 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 			 "macid used: %08x\n", priv->macids_used);
 	len += scnprintf(p + len, size - len,
 			 "qe trigger number: %d\n", priv->qe_trigger_num);
+
+	len += scnprintf(p + len, size - len,
+			"OS TxQ status = [ %d %d %d %d ]\n",
+			ieee80211_queue_stopped(priv->hw, 0),
+			ieee80211_queue_stopped(priv->hw, 1),
+			ieee80211_queue_stopped(priv->hw, 2),
+			ieee80211_queue_stopped(priv->hw, 3));
+
+	len += scnprintf(p + len, size - len,
+			"tx_mgmt_cnt=%lu, tx_data_cnt=%lu\n",
+			priv->tx_mgmt_cnt,
+			priv->tx_data_cnt);
+
+	len += scnprintf(p + len, size - len,
+			"num_valid_interrupts = %lu\n",
+			priv->valid_interrupt_cnt);
+
+	if (((priv->host_if == MWL_IF_PCIE) &&
+		IS_PFU_ENABLED(priv->chip_type))) {
+		struct mwl_pcie_card *card = priv->intf;
+
+		len += scnprintf(p + len, size - len,
+			"PCIe Tx Rd/Wr Ptr (Sw) = (0x%x / 0x%x)\n",
+			priv->txbd_rdptr, priv->txbd_wrptr);
+
+		len += scnprintf(p + len, size - len,
+			"PCIe Tx Rd/Wr Ptr (Hw) = (0x%x / 0x%x)\n",
+			readl(card->iobase1 + REG_TXBD_RDPTR),
+			readl(card->iobase1 + REG_TXBD_WRPTR));
+
+		len += scnprintf(p + len, size - len,
+			"PCIe IntMask = 0x%x\n",
+			readl(card->iobase1 +
+			MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
+	}
+
 	len += scnprintf(p + len, size - len, "\n");
 
 	ret = simple_read_from_buffer(ubuf, count, ppos, p, len);

@@ -588,10 +588,6 @@ inline void mwl_tx_ack_amsdu_pkts(struct ieee80211_hw *hw, u32 rate,
 }
 EXPORT_SYMBOL_GPL(mwl_tx_ack_amsdu_pkts);
 
-#if 0
-int tx_mgmt, tx_data;
-#endif
-
 void mwl_tx_xmit(struct ieee80211_hw *hw,
 		 struct ieee80211_tx_control *control,
 		 struct sk_buff *skb)
@@ -614,13 +610,6 @@ void mwl_tx_xmit(struct ieee80211_hw *hw,
 	struct mwl_tx_ctrl *tx_ctrl;
 	struct ieee80211_key_conf *k_conf = NULL;
 
-
-#if 0
- wiphy_err(priv->hw->wiphy, "%s() called #mgmt=%d, #data=%d\n",
-__FUNCTION__,tx_mgmt, tx_data);
-#endif
-
-
 	index = skb_get_queue_mapping(skb);
 	sta = control->sta;
 
@@ -641,16 +630,10 @@ __FUNCTION__,tx_mgmt, tx_data);
 		mgmt = (struct ieee80211_mgmt *)skb->data;
 	}
 
-#if 0
 	if (ieee80211_is_mgmt(wh->frame_control))
-		tx_mgmt++;
+		priv->tx_mgmt_cnt++;
 	else
-{
-
- //wiphy_err(priv->hw->wiphy, "in_data_skb=%p\n", skb);
-		tx_data++;
-}
-#endif
+		priv->tx_data_cnt++;
 
 	tx_info = IEEE80211_SKB_CB(skb);
 	mwl_vif = mwl_dev_get_vif(tx_info->control.vif);

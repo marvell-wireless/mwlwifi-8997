@@ -484,6 +484,12 @@ struct mwl_priv {
 	u32 reg_offset;
 	u32 reg_value;
 	int tx_desc_num;
+
+	unsigned long valid_interrupt_cnt;
+
+	/** Combined tx stats */
+	unsigned long tx_mgmt_cnt;
+	unsigned long tx_data_cnt;
 #endif
 
 	struct firmware *cal_data;
@@ -506,7 +512,6 @@ struct mwl_priv {
 	struct sk_buff *tx_buf_list[MLAN_MAX_TXRX_BD];
 	/** Flush indicator for txbd_ring */
 	unsigned char txbd_flush;
-
 };
 
 struct beacon_info {

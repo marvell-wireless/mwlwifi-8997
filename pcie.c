@@ -395,7 +395,6 @@ void mwl_pcie_rx_recv(unsigned long data)
 	struct ieee80211_rx_status status;
 	struct mwl_vif *mwl_vif = NULL;
 	struct ieee80211_hdr *wh;
-	u32 status_mask;
 
 	desc = &priv->desc_data[0];
 	curr_hndl = desc->pnext_rx_hndl;
@@ -1336,7 +1335,6 @@ void mwl_non_pfu_tx_done(unsigned long data)
 	spin_unlock_bh(&priv->tx_desc_lock);
 
 	if (priv->is_tx_done_schedule) {
-		u32 status_mask;
 
 		set_bit(MACREG_A2HRIC_BIT_TX_DONE,
 		(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
@@ -1465,7 +1463,6 @@ void mwl_pfu_tx_done(unsigned long data)
 
 	spin_unlock_bh(&priv->tx_desc_lock);
 	 if (priv->is_tx_done_schedule) {
-		u32 status_mask;
 
 		set_bit(MACREG_A2HRIC_BIT_TX_DONE,
 		(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
@@ -1499,13 +1496,12 @@ irqreturn_t mwl_pcie_isr(int irq, void *dev_id)
 	void __iomem *int_status_mask;
 	struct mwl_pcie_card *card = (struct mwl_pcie_card *)priv->intf;
 	unsigned int int_status;
-	u32 status;
 
-		int_status_mask = card->iobase1 +
-			MACREG_REG_A2H_INTERRUPT_STATUS_MASK;
+	int_status_mask = card->iobase1 +
+		MACREG_REG_A2H_INTERRUPT_STATUS_MASK;
 
-		int_status = readl(card->iobase1 +
-			MACREG_REG_A2H_INTERRUPT_CAUSE);
+	int_status = readl(card->iobase1 +
+		MACREG_REG_A2H_INTERRUPT_CAUSE);
 
 	if (int_status == 0x00000000)
 		return IRQ_NONE;
@@ -1516,10 +1512,13 @@ irqreturn_t mwl_pcie_isr(int irq, void *dev_id)
 		writel(~int_status,
 		       card->iobase1 + MACREG_REG_A2H_INTERRUPT_CAUSE);
 
+		priv->valid_interrupt_cnt++;
+
 		if (int_status & MACREG_A2HRIC_BIT_TX_DONE) {
 			if (!priv->is_tx_done_schedule) {
 				clear_bit(MACREG_A2HRIC_BIT_TX_DONE,
 				(card->iobase1 + MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
+
 
 					tasklet_schedule(
 						priv->if_ops.ptx_done_task);
@@ -1655,7 +1654,6 @@ static void mwl_pcie_tx_flush_amsdu(unsigned long data)
 	struct mwl_priv *priv = hw->priv;
 	struct mwl_pcie_card *card = (struct mwl_pcie_card *)priv->intf;
 
-	u32 status_mask;
 	struct mwl_sta *sta_info;
 	int i;
 	struct mwl_amsdu_frag *amsdu_frag;
