@@ -165,9 +165,11 @@ static int mwl_mac80211_add_interface(struct ieee80211_hw *hw,
 
 	switch (vif->type) {
 	case NL80211_IFTYPE_AP:
+	case NL80211_IFTYPE_P2P_GO:
 		macids_supported = priv->ap_macids_supported;
 		break;
 	case NL80211_IFTYPE_STATION:
+	case NL80211_IFTYPE_P2P_CLIENT:
 		macids_supported = priv->sta_macids_supported;
 		break;
 	default:
@@ -195,10 +197,12 @@ static int mwl_mac80211_add_interface(struct ieee80211_hw *hw,
 
 	switch (vif->type) {
 	case NL80211_IFTYPE_AP:
+	case NL80211_IFTYPE_P2P_GO:
 		ether_addr_copy(mwl_vif->bssid, vif->addr);
 		mwl_fwcmd_set_new_stn_add_self(hw, vif);
 		break;
 	case NL80211_IFTYPE_STATION:
+	case NL80211_IFTYPE_P2P_CLIENT:
 		ether_addr_copy(mwl_vif->sta_mac, vif->addr);
 		mwl_fwcmd_bss_start(hw, vif, true);
 		mwl_fwcmd_set_infra_mode(hw, vif);
@@ -239,9 +243,11 @@ static void mwl_mac80211_remove_interface(struct ieee80211_hw *hw,
 
 	switch (vif->type) {
 	case NL80211_IFTYPE_AP:
+	case NL80211_IFTYPE_P2P_GO:
 		mwl_fwcmd_set_new_stn_del(hw, vif, vif->addr);
 		break;
 	case NL80211_IFTYPE_STATION:
+	case NL80211_IFTYPE_P2P_CLIENT:
 		mwl_fwcmd_remove_mac_addr(hw, vif, vif->addr);
 		break;
 	default:
@@ -381,9 +387,11 @@ static void mwl_mac80211_bss_info_changed(struct ieee80211_hw *hw,
 {
 	switch (vif->type) {
 	case NL80211_IFTYPE_AP:
+	case NL80211_IFTYPE_P2P_GO:
 		mwl_mac80211_bss_info_changed_ap(hw, vif, info, changed);
 		break;
 	case NL80211_IFTYPE_STATION:
+	case NL80211_IFTYPE_P2P_CLIENT:
 		mwl_mac80211_bss_info_changed_sta(hw, vif, info, changed);
 		break;
 	default:
@@ -419,7 +427,8 @@ static int mwl_mac80211_set_key(struct ieee80211_hw *hw,
 		addr = vif->addr;
 	} else {
 		addr = sta->addr;
-		if (vif->type == NL80211_IFTYPE_STATION)
+		if ((vif->type == NL80211_IFTYPE_STATION) ||
+			(vif->type == NL80211_IFTYPE_P2P_CLIENT))
 			ether_addr_copy(mwl_vif->bssid, addr);
 	}
 
@@ -435,7 +444,8 @@ static int mwl_mac80211_set_key(struct ieee80211_hw *hw,
 		} else if (key->cipher == WLAN_CIPHER_SUITE_CCMP) {
 			encr_type = ENCR_TYPE_AES;
 			if ((key->flags & IEEE80211_KEY_FLAG_PAIRWISE) == 0) {
-				if (vif->type != NL80211_IFTYPE_STATION)
+				if ((vif->type != NL80211_IFTYPE_STATION) &&
+					(vif->type != NL80211_IFTYPE_P2P_CLIENT))
 					mwl_vif->keyidx = key->keyidx;
 			}
 		} else if (key->cipher == WLAN_CIPHER_SUITE_TKIP) {
@@ -500,7 +510,8 @@ static int mwl_mac80211_sta_add(struct ieee80211_hw *hw,
 	list_add_tail(&sta_info->list, &priv->sta_list);
 	spin_unlock_bh(&priv->sta_lock);
 
-	if (vif->type == NL80211_IFTYPE_STATION)
+	if ((vif->type == NL80211_IFTYPE_STATION) ||
+		(vif->type == NL80211_IFTYPE_P2P_CLIENT))
 		mwl_fwcmd_set_new_stn_del(hw, vif, sta->addr);
 
 	rc = mwl_fwcmd_set_new_stn_add(hw, vif, sta);
@@ -839,6 +850,34 @@ static int mwl_mac80211_ampdu_action(struct ieee80211_hw *hw,
 }
 #endif
 
+static int mwl_mac80211_remain_on_channel(struct ieee80211_hw *hw,
+					struct ieee80211_vif *vif,
+					struct ieee80211_channel *chan,
+					int duration, enum ieee80211_roc_type type)
+{
+	struct mwl_priv *priv = hw->priv;
+	int rc = 0;
+
+	rc = mwl_config_remain_on_channel(hw, chan, true, duration, type);
+	if (!rc) {
+		mod_timer(&priv->roc.roc_timer, jiffies + msecs_to_jiffies(duration));
+		priv->roc.tmr_running = true;
+		ieee80211_ready_on_channel(hw);
+	}
+
+	return rc;
+}
+
+static int mwl_mac80211_cancel_remain_on_channel(struct ieee80211_hw *hw)
+{
+	struct mwl_priv *priv = hw->priv;
+	int rc = 0;
+    
+	rc = mwl_config_remain_on_channel(hw, 0, false, 0, 0);
+
+	return rc;
+}
+
 static int mwl_mac80211_chnl_switch(struct ieee80211_hw *hw,
 				    struct ieee80211_vif *vif,
 				    struct ieee80211_channel_switch *ch_switch)
@@ -871,23 +910,25 @@ static void mwl_mac80211_sw_scan_complete(struct ieee80211_hw *hw,
 }
 
 const struct ieee80211_ops mwl_mac80211_ops = {
-	.tx                 = mwl_mac80211_tx,
-	.start              = mwl_mac80211_start,
-	.stop               = mwl_mac80211_stop,
-	.add_interface      = mwl_mac80211_add_interface,
-	.remove_interface   = mwl_mac80211_remove_interface,
-	.config             = mwl_mac80211_config,
-	.bss_info_changed   = mwl_mac80211_bss_info_changed,
-	.configure_filter   = mwl_mac80211_configure_filter,
-	.set_key            = mwl_mac80211_set_key,
-	.set_rts_threshold  = mwl_mac80211_set_rts_threshold,
-	.sta_add            = mwl_mac80211_sta_add,
-	.sta_remove         = mwl_mac80211_sta_remove,
-	.conf_tx            = mwl_mac80211_conf_tx,
-	.get_stats          = mwl_mac80211_get_stats,
-	.get_survey         = mwl_mac80211_get_survey,
-	.ampdu_action       = mwl_mac80211_ampdu_action,
-	.pre_channel_switch = mwl_mac80211_chnl_switch,
-	.sw_scan_start      = mwl_mac80211_sw_scan_start,
-	.sw_scan_complete   = mwl_mac80211_sw_scan_complete,
+	.tx                         = mwl_mac80211_tx,
+	.start                      = mwl_mac80211_start,
+	.stop                       = mwl_mac80211_stop,
+	.add_interface              = mwl_mac80211_add_interface,
+	.remove_interface           = mwl_mac80211_remove_interface,
+	.config                     = mwl_mac80211_config,
+	.bss_info_changed           = mwl_mac80211_bss_info_changed,
+	.configure_filter           = mwl_mac80211_configure_filter,
+	.set_key                    = mwl_mac80211_set_key,
+	.set_rts_threshold          = mwl_mac80211_set_rts_threshold,
+	.sta_add                    = mwl_mac80211_sta_add,
+	.sta_remove                 = mwl_mac80211_sta_remove,
+	.conf_tx                    = mwl_mac80211_conf_tx,
+	.get_stats                  = mwl_mac80211_get_stats,
+	.get_survey                 = mwl_mac80211_get_survey,
+	.ampdu_action               = mwl_mac80211_ampdu_action,
+	.pre_channel_switch         = mwl_mac80211_chnl_switch,
+	.remain_on_channel          = mwl_mac80211_remain_on_channel,
+	.cancel_remain_on_channel   = mwl_mac80211_cancel_remain_on_channel,
+	.sw_scan_start              = mwl_mac80211_sw_scan_start,
+	.sw_scan_complete           = mwl_mac80211_sw_scan_complete,
 };

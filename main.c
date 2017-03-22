@@ -112,7 +112,9 @@ static const struct ieee80211_rate mwl_rates_50[] = {
 
 static const struct ieee80211_iface_limit ap_if_limits[] = {
 	{ .max = SYSADPT_NUM_OF_AP,	.types = BIT(NL80211_IFTYPE_AP) },
-	{ .max = 1,	.types = BIT(NL80211_IFTYPE_STATION) },
+	{ .max = 1,	.types = BIT(NL80211_IFTYPE_STATION) | 
+							BIT(NL80211_IFTYPE_P2P_GO) | 
+							BIT(NL80211_IFTYPE_P2P_CLIENT)},
 };
 
 static const struct ieee80211_iface_combination ap_if_comb = {
@@ -549,6 +551,20 @@ static void mwl_regd_init(struct mwl_priv *priv)
 		}
 }
 
+static void remain_on_channel_expire(unsigned long data)
+{
+	struct ieee80211_hw *hw = (struct ieee80211_hw *)data;
+	struct mwl_priv *priv = hw->priv;
+
+	priv->roc.tmr_running = false;
+	if (!priv->roc.in_progress)
+		return;
+
+	if ((priv->roc.type == IEEE80211_ROC_TYPE_MGMT_TX) && 
+		(priv->roc.duration <= NL80211_MIN_REMAIN_ON_CHANNEL_TIME))
+		ieee80211_remain_on_channel_expired(hw);
+}
+
 static void timer_routine(unsigned long data)
 {
 	struct mwl_priv *priv = (struct mwl_priv *)data;
@@ -611,7 +627,11 @@ static int mwl_wl_init(struct mwl_priv *priv)
 	hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
 	hw->wiphy->flags |= WIPHY_FLAG_HAS_CHANNEL_SWITCH;
 
+	hw->wiphy->flags |= WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL;
+
 	hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS;
+
+	hw->wiphy->max_remain_on_channel_duration = 5000;
 
 	hw->vif_data_size = sizeof(struct mwl_vif);
 	hw->sta_data_size = sizeof(struct mwl_sta);
@@ -723,6 +743,9 @@ static int mwl_wl_init(struct mwl_priv *priv)
 	hw->wiphy->interface_modes = 0;
 	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_AP);
 	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_STATION);
+	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_P2P_GO);
+	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_P2P_CLIENT);
+
 	hw->wiphy->iface_combinations = &ap_if_comb;
 	hw->wiphy->n_iface_combinations = 1;
 
@@ -734,6 +757,8 @@ static int mwl_wl_init(struct mwl_priv *priv)
 			  MWL_DRV_NAME);
 		goto err_wl_init;
 	}
+
+	setup_timer(&priv->roc.roc_timer, remain_on_channel_expire, (unsigned long)hw);
 
 	setup_timer(&priv->period_timer, timer_routine, (unsigned long)priv);
 	mod_timer(&priv->period_timer, jiffies +

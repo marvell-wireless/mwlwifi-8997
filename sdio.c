@@ -1694,8 +1694,9 @@ void mwl_handle_rx_packet(struct mwl_priv *priv, struct sk_buff *skb)
 	//=> rateinfo--
 	*/
 
-	if (pdesc->channel !=
-		hw->conf.chandef.chan->hw_value) {
+	if ((pdesc->channel != hw->conf.chandef.chan->hw_value) &&
+		!(priv->roc.tmr_running && priv->roc.in_progress && 
+			(pdesc->channel == priv->roc.chan))) {
 		dev_kfree_skb_any(prx_skb);
 		wiphy_debug(priv->hw->wiphy,
 			"<= %s(), not accepted channel (%d, %d)\n", __func__,
@@ -2083,6 +2084,10 @@ mwl_process_txdesc(struct mwl_priv *priv,
 
 	if (tx_info->flags & IEEE80211_TX_INTFL_DONT_ENCRYPT) {
 		tx_desc->flags |= MWL_TX_WCB_FLAGS_DONT_ENCRYPT;
+	}
+
+	if (tx_info->flags & IEEE80211_TX_CTL_NO_CCK_RATE) {
+		tx_desc->flags |= MWL_TX_WCB_FLAGS_NO_CCK_RATE;
 	}
 
 	tx_desc->packet_info = 0;

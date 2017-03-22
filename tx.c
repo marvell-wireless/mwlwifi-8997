@@ -305,7 +305,8 @@ inline void mwl_tx_skb(struct mwl_priv *priv, int desc_num,
 			}
 		} else {
 			if (ccmp) {
-				if (vif->type == NL80211_IFTYPE_STATION) {
+				if ((vif->type == NL80211_IFTYPE_STATION) ||
+					(vif->type == NL80211_IFTYPE_P2P_CLIENT)) {
 					mwl_tx_insert_ccmp_hdr(dma_data_pload,
 							       mwl_vif->keyidx,
 							       mwl_vif->iv16,

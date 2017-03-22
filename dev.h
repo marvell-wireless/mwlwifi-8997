@@ -216,6 +216,7 @@ struct mwl_hw_data {
 
 
 #define MWL_TX_WCB_FLAGS_DONT_ENCRYPT 0x00000001 
+#define MWL_TX_WCB_FLAGS_NO_CCK_RATE  0x00000002
 
 struct mwl_tx_desc {
 	u8 data_rate;
@@ -315,6 +316,15 @@ struct mwl_survey_info {
 	u32 time_busy;
 	u32 time_tx;
 	s8 noise;
+};
+
+struct mwl_roc_info {
+	bool in_progress;
+	bool tmr_running;
+	u8 type;
+	u8 duration;
+	u32 chan;
+	struct timer_list roc_timer;
 };
 
 #ifdef CONFIG_DEBUG_FS
@@ -436,6 +446,9 @@ struct mwl_priv {
 
 	struct timer_list period_timer;
 
+	/*Remain on channel info*/
+	struct mwl_roc_info roc;
+
 	/* keep survey information */
 	bool sw_scanning;
 	int survey_info_idx;
@@ -546,6 +559,7 @@ struct beacon_info {
 	u8 *ie_ht_ptr;
 	u8 *ie_vht_ptr;
 	u8 *ie_country_ptr;
+	u8 *ie_wfd_ptr;
 	u8 ie_ssid_len;
 	u8 ie_wmm_len;
 	u8 ie_wsc_len;
@@ -554,6 +568,7 @@ struct beacon_info {
 	u8 ie_ht_len;
 	u8 ie_vht_len;
 	u8 ie_country_len;
+	u8 ie_wfd_len;
 };
 
 struct mwl_vif {

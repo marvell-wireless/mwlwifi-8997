@@ -71,6 +71,7 @@
 #define HOSTCMD_CMD_GET_FW_REGION_CODE_SC4      0x118A
 #define HOSTCMD_CMD_GET_DEVICE_PWR_TBL_SC4      0x118B
 #define HOSTCMD_CMD_QUIET_MODE                  0x1201
+#define HOSTCMD_CMD_SET_WFD_IE                  0x1202
 
 /* Define general result code for each command */
 #define HOSTCMD_RESULT_OK                       0x0000
@@ -146,6 +147,11 @@
 #define WSC_IE_MAX_LENGTH                       251
 #define WSC_IE_SET_BEACON                       0
 #define WSC_IE_SET_PROBE_RESPONSE               1
+
+/* Allocating space only for single NOA descriptor */
+#define WFD_IE_MAX_LENGTH                       38
+#define WFD_IE_SET_BEACON                       0
+#define WFD_IE_SET_PROBE_RESPONSE               1
 
 #define HW_SET_PARMS_FEATURES_HOST_PROBE_RESP   0x00000020
 
@@ -400,6 +406,7 @@ struct hostcmd_cmd_set_rf_channel {
 	__le16 action;
 	u8 curr_chnl;
 	__le32 chnl_flags;
+	u8 remain_on_chan;
 } __packed;
 
 /* HOSTCMD_CMD_SET_AID */
@@ -912,6 +919,14 @@ struct hostcmd_cmd_set_wsc_ie {
 	__le16 ie_type;              /* 0 -- beacon. or 1 -- probe response. */
 	__le16 len;
 	u8 data[WSC_IE_MAX_LENGTH];
+} __packed;
+
+/* HOSTCMD_CMD_SET_WFD_IE */
+struct hostcmd_cmd_set_wfd_ie {
+	struct hostcmd_header cmd_hdr;
+	__le16 ie_type;              /* 0 -- beacon. or 1 -- probe response. */
+	__le16 len;
+	u8 data[WFD_IE_MAX_LENGTH];
 } __packed;
 
 /* HOSTCMD_CMD_DWDS_ENABLE */

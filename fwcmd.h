@@ -117,6 +117,11 @@ int mwl_fwcmd_powersave_EnblDsbl(struct ieee80211_hw *hw,
 int mwl_fwcmd_set_rf_channel(struct ieee80211_hw *hw,
 				struct ieee80211_conf *conf);
 
+int mwl_config_remain_on_channel(struct ieee80211_hw *hw,
+							struct ieee80211_channel *channel,
+							bool remain_on_channel, int duration,
+							enum ieee80211_roc_type type);
+
 int mwl_fwcmd_set_aid(struct ieee80211_hw *hw,
 			struct ieee80211_vif *vif, u8 *bssid, u16 aid);
 
@@ -218,6 +223,8 @@ bool mwl_fwcmd_ampdu_allowed(struct ieee80211_sta *sta, u8 tid);
 int mwl_fwcmd_set_optimization_level(struct ieee80211_hw *hw, u8 opt_level);
 
 int mwl_fwcmd_set_wsc_ie(struct ieee80211_hw *hw, u8 len, u8 *data);
+
+int mwl_fwcmd_set_wfd_ie(struct ieee80211_hw *hw, u8 len, u8 *data);
 
 int mwl_fwcmd_set_dwds_stamode(struct ieee80211_hw *hw, bool enable);
 
