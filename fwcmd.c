@@ -1052,7 +1052,7 @@ int mwl_fwcmd_set_hw_specs(struct ieee80211_hw *hw)
 
 	pcmd->total_rx_wcb = cpu_to_le32(SYSADPT_MAX_NUM_RX_DESC);
 	pcmd->rxpd_wr_ptr = cpu_to_le32(priv->desc_data[0].pphys_rx_ring);
-	pcmd->features = 0;
+	pcmd->features |= HW_SET_PARMS_FEATURES_HOST_PROBE_RESP;
 
 	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_SET_HW_SPEC)) {
 		mutex_unlock(&priv->fwcmd_mutex);

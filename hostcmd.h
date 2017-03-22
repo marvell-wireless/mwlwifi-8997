@@ -147,6 +147,8 @@
 #define WSC_IE_SET_BEACON                       0
 #define WSC_IE_SET_PROBE_RESPONSE               1
 
+#define HW_SET_PARMS_FEATURES_HOST_PROBE_RESP   0x00000020
+
 enum {
 	WL_DISABLE = 0,
 	WL_ENABLE = 1,
