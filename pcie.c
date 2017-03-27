@@ -1351,6 +1351,10 @@ void mwl_non_pfu_tx_done(unsigned long data)
 	return;
 }
 
+/* XXX: Tx Rate to be indicated to mac80211 - For KF2 PCIe & SDIO,
+** driver has no way of knowing the rate at which the pkt was Tx'ed.
+** Use hardcoded max value for this
+*/
 static void mwl_tx_complete_skb(struct sk_buff *done_skb,
 		struct _mlan_pcie_data_buf *tx_ring_entry,
 		struct ieee80211_hw *hw)
