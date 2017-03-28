@@ -683,7 +683,17 @@ static int mwl_mac80211_ampdu_action(struct ieee80211_hw *hw,
 	case IEEE80211_AMPDU_TX_STOP_CONT:
 	case IEEE80211_AMPDU_TX_STOP_FLUSH:
 	case IEEE80211_AMPDU_TX_STOP_FLUSH_CONT:
+
+		wiphy_warn(hw->wiphy, "%s() Action=%d stream=%p\n",
+			__FUNCTION__, action, stream);
+
 		if (stream) {
+
+			wiphy_warn(hw->wiphy, "stream: state = %d idx=%d\n", stream->state, stream->idx);
+			wiphy_warn(hw->wiphy, "Addr = %02x:%02x:%02x:%02x:%02x:%02x\n",
+					addr[0], addr[1], addr[2],
+					addr[3], addr[4], addr[5]);
+
 			if (stream->state == AMPDU_STREAM_ACTIVE) {
 				mwl_tx_del_ampdu_pkts(hw, sta, tid);
 				idx = stream->idx;
@@ -870,7 +880,6 @@ static int mwl_mac80211_remain_on_channel(struct ieee80211_hw *hw,
 
 static int mwl_mac80211_cancel_remain_on_channel(struct ieee80211_hw *hw)
 {
-	struct mwl_priv *priv = hw->priv;
 	int rc = 0;
     
 	rc = mwl_config_remain_on_channel(hw, 0, false, 0, 0);
