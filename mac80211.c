@@ -684,7 +684,7 @@ static int mwl_mac80211_ampdu_action(struct ieee80211_hw *hw,
 	case IEEE80211_AMPDU_TX_STOP_FLUSH:
 	case IEEE80211_AMPDU_TX_STOP_FLUSH_CONT:
 
-		wiphy_warn(hw->wiphy, "%s() Action=%d stream=%p\n",
+		wiphy_warn(hw->wiphy, "%s(e) Action=%d stream=%p\n",
 			__FUNCTION__, action, stream);
 
 		if (stream) {
@@ -707,6 +707,9 @@ static int mwl_mac80211_ampdu_action(struct ieee80211_hw *hw,
 		} else {
 			rc = -EPERM;
 		}
+
+		wiphy_warn(hw->wiphy, "%s(l) Action=%d stream=%p ret=%d\n",
+			__FUNCTION__, action, stream, rc);
 		break;
 	case IEEE80211_AMPDU_TX_OPERATIONAL:
 		if (stream) {
