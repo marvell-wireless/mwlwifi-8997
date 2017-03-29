@@ -158,6 +158,7 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 	bool busy = false;
 	int rc = -EIO;
 	struct hostcmd_header *presp;
+	struct hostcmd_header *pcmd;
 
 	might_sleep();
 
@@ -175,9 +176,15 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 	}
 
 	if (!priv->in_send_cmd) {
+		pcmd = (struct hostcmd_header *)&priv->pcmd_buf[
+			INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
+
+		priv->cmd_seq_num++;
+		pcmd->seq_num = priv->cmd_seq_num;
+
 		priv->in_send_cmd = true;
-		wiphy_debug(priv->hw->wiphy, "DNLD_CMD=> (%04xh, %s)\n",
-			cmd, mwl_fwcmd_get_cmd_string(cmd));
+		wiphy_debug(priv->hw->wiphy, "DNLD_CMD(# %02x)=> (%04xh, %s)\n",
+			pcmd->seq_num, cmd, mwl_fwcmd_get_cmd_string(cmd));
 		/* mwl_hex_dump((char*)cmd_hdr, cmd_hdr->len); */
 		
 		mwl_fwcmd_send_cmd(priv);
@@ -188,7 +195,8 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 			rc = priv->if_ops.cmd_resp_wait_completed(priv,
 				HOSTCMD_RESP_BIT | cmd);
 		if (rc != 0) {
-			wiphy_err(priv->hw->wiphy, "timeout: 0x%04x\n", cmd);
+			wiphy_err(priv->hw->wiphy, "timeout(# %02x) CMD=0x%04x\n", 
+				pcmd->seq_num, cmd);
 			priv->in_send_cmd = false;
 			priv->cmd_timeout = true;
 
@@ -196,8 +204,8 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 		}
 		presp = (struct hostcmd_header *)&priv->pcmd_buf[
 			INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
-		wiphy_debug(priv->hw->wiphy, " CMD_RESP=> (%04xh)\n",
-			presp->cmd);
+		wiphy_debug(priv->hw->wiphy, " CMD_RESP(# %02x)=> (%04xh)\n",
+			presp->seq_num, presp->cmd);
 		/* mwl_hex_dump((char*)cmd_hdr, cmd_hdr->len); */
 	} else {
 		wiphy_warn(priv->hw->wiphy,
