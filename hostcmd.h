@@ -60,6 +60,7 @@
 #define HOSTCMD_CMD_SET_POWER_CONSTRAINT        0x1129
 #define HOSTCMD_CMD_SET_COUNTRY_CODE            0x1130
 #define HOSTCMD_CMD_SET_OPTIMIZATION_LEVEL      0x1133
+#define HOSTCMD_CMD_SET_MIMOPSHT                0x1135
 #define HOSTCMD_CMD_SET_WSC_IE                  0x1136 /* per-vif */
 #define HOSTCMD_CMD_DWDS_ENABLE                 0x1144
 #define HOSTCMD_CMD_FW_FLUSH_TIMER              0x1148
@@ -911,6 +912,14 @@ struct hostcmd_cmd_set_country_code {
 struct hostcmd_cmd_set_optimization_level {
 	struct hostcmd_header cmd_hdr;
 	u8 opt_level;
+} __packed;
+
+/* HOSTCMD_CMD_SET_MIMOPSHT */
+struct hostcmd_cmd_set_mimops_ht {
+	struct hostcmd_header cmd_hdr;
+	u8 addr[ETH_ALEN];
+    u8 enbl;
+    u8 mode;
 } __packed;
 
 /* HOSTCMD_CMD_SET_WSC_IE */

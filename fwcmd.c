@@ -92,6 +92,7 @@ char *mwl_fwcmd_get_cmd_string(unsigned short cmd)
 		{ HOSTCMD_CMD_SET_POWER_CONSTRAINT, "SetPowerConstraint" },
 		{ HOSTCMD_CMD_SET_COUNTRY_CODE, "SetCountryCode" },
 		{ HOSTCMD_CMD_SET_OPTIMIZATION_LEVEL, "SetOptimizationLevel" },
+		{ HOSTCMD_CMD_SET_MIMOPSHT, "SetMimoPSMode" },
 		{ HOSTCMD_CMD_SET_WSC_IE, "SetWscIE" },
 		{ HOSTCMD_CMD_DWDS_ENABLE, "DwdsEnable" },
 		{ HOSTCMD_CMD_FW_FLUSH_TIMER, "FwFlushTimer" },
@@ -3117,6 +3118,33 @@ int mwl_fwcmd_set_optimization_level(struct ieee80211_hw *hw, u8 opt_level)
 	return 0;
 }
 
+int mwl_fwcmd_set_mimops_ht(struct ieee80211_hw *hw, u8 *addr, u8 smps_ctrl)
+{
+	struct mwl_priv *priv = hw->priv;
+	struct hostcmd_cmd_set_mimops_ht *pcmd;
+
+	pcmd = (struct hostcmd_cmd_set_mimops_ht *)&priv->pcmd_buf[
+			INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
+
+	mutex_lock(&priv->fwcmd_mutex);
+
+	memset(pcmd, 0x00, sizeof(*pcmd));
+	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_MIMOPSHT);
+	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
+	ether_addr_copy(pcmd->addr, addr);
+	pcmd->enbl = (smps_ctrl & 0x1);
+	pcmd->mode = (smps_ctrl & 0x2);
+
+	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_SET_MIMOPSHT)) {
+		mutex_unlock(&priv->fwcmd_mutex);
+		wiphy_err(hw->wiphy, "failed execution\n");
+		return -EIO;
+	}
+
+	mutex_unlock(&priv->fwcmd_mutex);
+
+	return 0;
+}
 
 int mwl_fwcmd_set_wfd_ie(struct ieee80211_hw *hw, u8 len, u8 *data)
 {
