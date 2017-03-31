@@ -786,6 +786,10 @@ void mwl_wl_deinit(struct mwl_priv *priv)
 
 	cancel_work_sync(&priv->watchdog_ba_handle);
 
+	cancel_work_sync(&priv->rx_defer_work);
+	destroy_workqueue(priv->rx_defer_workq);
+	skb_queue_purge(&priv->rx_defer_skb_q);
+
 	mwl_fwcmd_reset(hw);
 
 }
@@ -798,7 +802,6 @@ int mwl_add_card(void *card, struct mwl_if_ops *if_ops)
 	const char *fw_name;
 	int rc = 0;
 	int tx_num = 4, rx_num = 4;
-
 
 	hw = ieee80211_alloc_hw(sizeof(*priv), &mwl_mac80211_ops);
 	if (!hw) {
@@ -814,6 +817,13 @@ int mwl_add_card(void *card, struct mwl_if_ops *if_ops)
 	priv->fw_device_pwrtbl = false;
 	priv->intf = card;
 	
+	priv->is_rx_defer_schedule = false;
+	priv->rx_defer_workq =
+		alloc_workqueue("mwlwifi-rx_defer_workq",
+		WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
+	INIT_WORK(&priv->rx_defer_work, mwl_rx_defered_handler);
+	skb_queue_head_init(&priv->rx_defer_skb_q);
+
 	/* Save interface specific operations in adapter */
 	memmove(&priv->if_ops, if_ops, sizeof(struct mwl_if_ops));
 

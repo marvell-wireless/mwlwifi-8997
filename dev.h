@@ -542,6 +542,11 @@ struct mwl_priv {
 	struct sk_buff *tx_buf_list[MLAN_MAX_TXRX_BD];
 	/** Flush indicator for txbd_ring */
 	unsigned char txbd_flush;
+
+	struct workqueue_struct *rx_defer_workq;
+	struct work_struct rx_defer_work;
+	struct sk_buff_head rx_defer_skb_q;
+	bool is_rx_defer_schedule;
 };
 
 struct beacon_info {

@@ -186,3 +186,58 @@ void mwl_rx_remove_dma_header(struct sk_buff *skb, __le16 qos)
 }
 EXPORT_SYMBOL_GPL(mwl_rx_remove_dma_header);
 
+void mwl_rx_defered_handler(struct work_struct *work)
+{
+	struct ieee80211_hw *hw;
+	struct mwl_priv *priv = container_of(work,
+			struct mwl_priv, rx_defer_work);
+	struct sk_buff *rx_skb;
+
+	hw = priv->hw;
+
+	priv->is_rx_defer_schedule = false;
+
+	while ((rx_skb = skb_dequeue(&priv->rx_defer_skb_q))) {
+		struct ieee80211_hdr *wh;
+		wh = (struct ieee80211_hdr *)rx_skb->data;
+
+		wiphy_err(hw->wiphy, "%s(): mgmt=%d stype=%d\n",
+			__FUNCTION__,
+			ieee80211_is_mgmt(wh->frame_control),
+			(wh->frame_control & IEEE80211_FCTL_STYPE));
+
+		/* TODO: Add defered processing code here */
+		kfree_skb(rx_skb);
+	}
+}
+
+inline bool mwl_rx_needs_defered_processing(struct sk_buff *rx_skb)
+{
+	/* TODO: Choose conditions for selecting defered pkts here */
+	return 0;
+}
+
+void mwl_rx_upload_pkt(struct ieee80211_hw *hw,
+		struct sk_buff *rx_skb)
+{
+	struct ieee80211_hdr *wh;
+	struct mwl_priv *priv = hw->priv;
+	struct sk_buff *skb_save;
+
+	wh = (struct ieee80211_hdr *)rx_skb->data;
+
+	if (unlikely(ieee80211_is_mgmt(wh->frame_control)) &&
+		mwl_rx_needs_defered_processing(rx_skb) &&
+		((skb_save = skb_copy(rx_skb, GFP_ATOMIC)) != NULL)){
+		skb_queue_tail(&priv->rx_defer_skb_q, skb_save);
+
+		if (!priv->is_rx_defer_schedule) {
+			priv->is_rx_defer_schedule = true;
+			queue_work(priv->rx_defer_workq, &priv->rx_defer_work);
+		}
+	}
+
+	/* Upload pkts to mac80211 */
+	ieee80211_rx(hw, rx_skb);
+}
+EXPORT_SYMBOL_GPL(mwl_rx_upload_pkt);

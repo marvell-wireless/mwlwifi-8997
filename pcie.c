@@ -519,7 +519,7 @@ void mwl_pcie_rx_recv(unsigned long data)
 		}
 #endif
 		memcpy(IEEE80211_SKB_RXCB(prx_skb), &status, sizeof(status));
-		ieee80211_rx(hw, prx_skb);
+		mwl_rx_upload_pkt(hw, prx_skb);
 out:
 		mwl_rx_refill(priv, curr_hndl);
 		curr_hndl->pdesc->rx_control = EAGLE_RXD_CTRL_DRIVER_OWN;

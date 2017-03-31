@@ -28,4 +28,9 @@ void mwl_rx_remove_dma_header(struct sk_buff *skb, __le16 qos);
 void mwl_rx_enable_sta_amsdu(struct mwl_priv *priv,
 					   u8 *sta_addr);
 
+extern void mwl_rx_upload_pkt(struct ieee80211_hw *hw,
+		struct sk_buff *rx_skb);
+extern void mwl_rx_defered_handler(struct work_struct *work);
+
+
 #endif /* _RX_H_ */

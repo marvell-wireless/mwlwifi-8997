@@ -1787,8 +1787,8 @@ void mwl_handle_rx_packet(struct mwl_priv *priv, struct sk_buff *skb)
 #endif
 	memcpy(IEEE80211_SKB_RXCB(prx_skb), &status, sizeof(status));
 
-	/*  Packet to indicate => Will indicate AMPDU/AMSDU packets */
-	ieee80211_rx(hw, prx_skb);
+	/* Packet to indicate => Will indicate AMPDU/AMSDU packets */
+	mwl_rx_upload_pkt(hw, prx_skb);
 
 	return;
 }

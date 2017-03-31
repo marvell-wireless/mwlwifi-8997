@@ -1675,7 +1675,8 @@ int mwl_fwcmd_set_roc_channel(struct ieee80211_hw *hw,
 {
 	struct mwl_priv *priv = hw->priv;
 	struct hostcmd_cmd_set_rf_channel *pcmd;
-	u32 chnl_flags, freq_band, chnl_width, act_primary;
+	u32 chnl_flags, freq_band = FREQ_BAND_2DOT4GHZ;
+	u32 chnl_width, act_primary;
 
 	if (channel->band == NL80211_BAND_2GHZ) {
 		freq_band = FREQ_BAND_2DOT4GHZ;
