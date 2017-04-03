@@ -628,6 +628,9 @@ struct mwl_sta {
 	} ____cacheline_aligned_in_smp;
 	u16 iv16;
 	u32 iv32;
+
+	struct work_struct rc_update_work;
+	struct mwl_priv *mwl_private;
 };
 
 /* DMA header used by firmware and hardware. */

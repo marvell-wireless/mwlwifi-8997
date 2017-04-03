@@ -3132,8 +3132,9 @@ int mwl_fwcmd_set_mimops_ht(struct ieee80211_hw *hw, u8 *addr, u8 smps_ctrl)
 	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_MIMOPSHT);
 	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
 	ether_addr_copy(pcmd->addr, addr);
+
 	pcmd->enbl = (smps_ctrl & 0x1);
-	pcmd->mode = (smps_ctrl & 0x2);
+	pcmd->mode = (smps_ctrl >> 1);
 
 	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_SET_MIMOPSHT)) {
 		mutex_unlock(&priv->fwcmd_mutex);
