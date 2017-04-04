@@ -631,6 +631,8 @@ static int mwl_wl_init(struct mwl_priv *priv)
 
 	hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS;
 
+	hw->wiphy->features |= NL80211_FEATURE_NEED_OBSS_SCAN;
+
 	hw->wiphy->max_remain_on_channel_duration = 5000;
 
 	hw->vif_data_size = sizeof(struct mwl_vif);
