@@ -216,6 +216,33 @@ static inline void mwl_tx_add_basic_rates(int band, struct sk_buff *skb)
 	}
 }
 
+static inline void mwl_tx_set_cap_2040_coex(__le16 fc, struct sk_buff *skb)
+{
+	struct ieee80211_mgmt *mgmt;
+	int len;
+	u8 *pos, *ie_start;
+
+	mgmt = (struct ieee80211_mgmt *)skb->data;
+	len = skb->len - ieee80211_hdrlen(fc);
+	len -= 4;
+
+	if (ieee80211_is_reassoc_req(fc)) {
+		len -= 6; /* Current AP addr */
+		ie_start = mgmt->u.reassoc_req.variable;
+	} else
+		ie_start = mgmt->u.assoc_req.variable;
+
+	pos = (u8 *)cfg80211_find_ie(WLAN_EID_EXT_CAPABILITY, ie_start, len);
+
+	if (pos) {
+		pos++;
+		len = *pos++;
+		if(len)
+			pos[0] |= BIT(0);	/* Set 20/40 coex support */
+	}
+
+}
+
 static inline void mwl_tx_count_packet(struct ieee80211_sta *sta, u8 tid)
 {
 	struct mwl_sta *sta_info;
@@ -684,6 +711,17 @@ void mwl_tx_xmit(struct ieee80211_hw *hw,
 		if (unlikely(ieee80211_is_assoc_req(wh->frame_control)))
 			mwl_tx_add_basic_rates(hw->conf.chandef.chan->band,
 					       skb);
+
+		/* XXX: WAR - Currently it's not clear where/how to inform to
+		** to upper layer to set 20/40 coex capability. Set it in 
+		** driver for now
+		*/
+		if (unlikely((ieee80211_is_assoc_req(wh->frame_control) ||
+			ieee80211_is_reassoc_req(wh->frame_control)) &&
+			(hw->conf.chandef.chan->band == IEEE80211_BAND_2GHZ))) {
+			wiphy_err(hw->wiphy, "Setting 20/40 coex cap\n");
+			mwl_tx_set_cap_2040_coex(wh->frame_control, skb);
+		}
 	}
 
 	index = SYSADPT_TX_WMM_QUEUES - index - 1;
