@@ -623,6 +623,7 @@ static int mwl_wl_init(struct mwl_priv *priv)
 
 	ieee80211_hw_set(hw, SUPPORTS_PER_STA_GTK);
 	ieee80211_hw_set(hw, MFP_CAPABLE);
+	ieee80211_hw_set(hw, SPECTRUM_MGMT);
 
 	hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
 	hw->wiphy->flags |= WIPHY_FLAG_HAS_CHANNEL_SWITCH;
