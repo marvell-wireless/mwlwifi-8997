@@ -395,6 +395,7 @@ void mwl_pcie_rx_recv(unsigned long data)
 	struct ieee80211_rx_status status;
 	struct mwl_vif *mwl_vif = NULL;
 	struct ieee80211_hdr *wh;
+	struct mwl_rx_event_data *rx_evnt;
 
 	desc = &priv->desc_data[0];
 	curr_hndl = desc->pnext_rx_hndl;
@@ -420,6 +421,13 @@ void mwl_pcie_rx_recv(unsigned long data)
 		pkt_len = le16_to_cpu(curr_hndl->pdesc->pkt_len);
 
 		if (skb_tailroom(prx_skb) < pkt_len) {
+			dev_kfree_skb_any(prx_skb);
+			goto out;
+		}
+
+		if (curr_hndl->pdesc->payldType == RX_PAYLOAD_TYPE_EVENT_INFO) {
+			rx_evnt = (struct mwl_rx_event_data *)prx_skb->data;
+			mwl_handle_rx_event(hw, rx_evnt);
 			dev_kfree_skb_any(prx_skb);
 			goto out;
 		}

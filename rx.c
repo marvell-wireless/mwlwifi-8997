@@ -125,6 +125,16 @@ void mwl_rx_prepare_status(struct mwl_rx_desc *pdesc,
 }
 EXPORT_SYMBOL_GPL(mwl_rx_prepare_status);
 
+void mwl_handle_rx_event(struct ieee80211_hw *hw,
+					struct mwl_rx_event_data *rx_evnt)
+{
+	if (rx_evnt->event_id == MWL_RX_EVNT_RADAR_DETECT) {
+		wiphy_info(hw->wiphy, "radar detected by firmware\n");
+		ieee80211_radar_detected(hw);
+	}
+}
+EXPORT_SYMBOL_GPL(mwl_handle_rx_event);
+
 #if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
 void mwl_rx_enable_sta_amsdu(struct mwl_priv *priv,
 					   u8 *sta_addr)

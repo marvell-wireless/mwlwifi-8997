@@ -155,6 +155,11 @@ enum {
 	MWL_IF_SDIO = 0x02,
 };
 
+enum {
+	RX_PAYLOAD_TYPE_FRAME_DATA,
+	RX_PAYLOAD_TYPE_EVENT_INFO,
+};
+
 #define CMD_BUF_SIZE     0x4000
 
 struct mwl_chip_info {
@@ -270,7 +275,8 @@ struct mwl_rx_desc {
 	__le32 hw_rssi_info;
 	__le32 hw_noise_floor_info;
 	u8 noise_floor;
-	u8 reserved[3];
+	u8 reserved[2];
+	u8 payldType;
 	u8 rssi;                     /* received signal strengt indication */
 	u8 status;                   /* status field containing USED bit   */
 	u8 channel;                  /* channel this pkt was received on   */
@@ -282,6 +288,14 @@ struct mwl_rx_hndl {
 	struct sk_buff *psk_buff;    /* associated sk_buff for Linux       */
 	struct mwl_rx_desc *pdesc;
 	struct mwl_rx_hndl *pnext;
+};
+
+#define MWL_RX_EVNT_RADAR_DETECT      0x2
+
+struct mwl_rx_event_data {
+	u16 event_id;
+	u16 length;
+	u32 event_info;
 };
 
 struct mwl_desc_data {

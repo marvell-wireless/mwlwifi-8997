@@ -31,6 +31,7 @@ void mwl_rx_enable_sta_amsdu(struct mwl_priv *priv,
 extern void mwl_rx_upload_pkt(struct ieee80211_hw *hw,
 		struct sk_buff *rx_skb);
 extern void mwl_rx_defered_handler(struct work_struct *work);
-
+extern void mwl_handle_rx_event(struct ieee80211_hw *hw,
+                    struct mwl_rx_event_data *rx_evnt);
 
 #endif /* _RX_H_ */

@@ -1684,6 +1684,7 @@ void mwl_handle_rx_packet(struct mwl_priv *priv, struct sk_buff *skb)
 	struct ieee80211_rx_status status;
 	struct mwl_vif *mwl_vif = NULL;
 	struct ieee80211_hdr *wh;
+	struct mwl_rx_event_data *rx_evnt;
 
 	pdesc = (struct mwl_rx_desc *)prx_skb->data;
 	pkt_len = le16_to_cpu(pdesc->pkt_len);
@@ -1693,6 +1694,13 @@ void mwl_handle_rx_packet(struct mwl_priv *priv, struct sk_buff *skb)
 	//card->rate_info = pdesc->rate;
 	//=> rateinfo--
 	*/
+	if (pdesc->payldType == RX_PAYLOAD_TYPE_EVENT_INFO) {
+		skb_pull(prx_skb, sizeof(struct mwl_rx_desc));
+		rx_evnt = (struct mwl_rx_event_data *)prx_skb->data;
+		mwl_handle_rx_event(hw, rx_evnt);
+		dev_kfree_skb_any(prx_skb);
+		return;
+	}
 
 	if ((pdesc->channel != hw->conf.chandef.chan->hw_value) &&
 		!(priv->roc.tmr_running && priv->roc.in_progress && 
