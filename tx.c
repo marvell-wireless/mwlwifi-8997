@@ -938,11 +938,25 @@ void mwl_tx_del_ampdu_pkts(struct ieee80211_hw *hw,
 	spin_unlock_bh(&sta_info->amsdu_lock);
 }
 
+int mwl_tx_get_highest_priority_qnum(struct ieee80211_hw *hw)
+{
+	struct mwl_priv *priv = hw->priv;
+	int num = -1;
+
+	for (num = SYSADPT_TX_WMM_QUEUES - 1; num >= 0; num--) {
+		if ((skb_queue_len(&priv->txq[num]) > 0) &&
+			mwl_tx_available(priv, num))
+			return num;
+	}
+	return num;
+}
+
+
 void mwl_tx_skbs(unsigned long data)
 {
 	struct ieee80211_hw *hw = (struct ieee80211_hw *)data;
 	struct mwl_priv *priv = hw->priv;
-	int num = SYSADPT_TX_WMM_QUEUES;
+	int num;
 	int next_pkt_len = 0;
 	struct sk_buff *tx_skb, *next_skb;
 	struct mwl_sta *sta_info;
@@ -956,93 +970,93 @@ pr_alert("wrptr=0x%x, rdptr=0x%x not_full=%d\n",
 #endif
 
 	spin_lock_bh(&priv->tx_desc_lock);
-	while (num--) {
-		while (skb_queue_len(&priv->txq[num]) > 0) {
-			struct ieee80211_tx_info *tx_info;
-			struct mwl_tx_ctrl *tx_ctrl;
+	while (1) {
+		struct ieee80211_tx_info *tx_info;
+		struct mwl_tx_ctrl *tx_ctrl;
 
-			if (!mwl_tx_available(priv, num))
-				break;
+		num = mwl_tx_get_highest_priority_qnum(hw);
+		if (num < 0)
+			break;
 
-			tx_skb = skb_dequeue(&priv->txq[num]);
-			tx_info = IEEE80211_SKB_CB(tx_skb);
-			tx_ctrl = (struct mwl_tx_ctrl *)&tx_info->status;
+		tx_skb = skb_dequeue(&priv->txq[num]);
+		tx_info = IEEE80211_SKB_CB(tx_skb);
+		tx_ctrl = (struct mwl_tx_ctrl *)&tx_info->status;
 
-			if ((tx_skb->protocol != cpu_to_be16(ETH_P_PAE)) &&
-			    (tx_ctrl->tx_priority >= SYSADPT_TX_WMM_QUEUES)) {
-				/* Need to leave spin_lock since bus driver may
-				sleep while transferring data
-				*/
-				spin_unlock_bh(&priv->tx_desc_lock);
-//wiphy_err(priv->hw->wiphy, "[call mwl_tx_do_amsdu]\n");
-				tx_skb = mwl_tx_do_amsdu(priv, num,
-							 tx_skb, tx_info);
-				spin_lock_bh(&priv->tx_desc_lock);
-			}
-
-			/* get next buffer length */
-			next_pkt_len = 0;
-			if (priv->host_if == MWL_IF_SDIO) {
-				next_skb = skb_peek(&priv->txq[num]);
-				if (next_skb != NULL) {
-					next_pkt_len = next_skb->len +
-						sizeof(struct mwl_tx_desc);
-				}
-			} else
-				next_pkt_len = num;
-
-			if (tx_skb) {
-				/* Need to leave spin_lock since bus driver
-				* may sleep while transferring data
-				*/
-				spin_unlock_bh(&priv->tx_desc_lock);
-				if (mwl_tx_available(priv, next_pkt_len))
-{
-//	wiphy_err(priv->hw->wiphy, "[call mwl_tx_skb1]\n");
-					mwl_tx_skb(priv, next_pkt_len, tx_skb);
-}
-				else {
-			/* skb consumed. Marking as NULL. This code is not
-			* intended to be executed.
-			* If it gets executed, following will
-			* happen - tx_skb can contain an amsdu, which will get
-			* added to queue head updating the queue length and the
-			* while () loop will never terminate...
-			*/
-					skb_queue_head(&priv->txq[num], tx_skb);
-				}
-				spin_lock_bh(&priv->tx_desc_lock);
-			}
+		if ((tx_skb->protocol != cpu_to_be16(ETH_P_PAE)) &&
+		(tx_ctrl->tx_priority >= SYSADPT_TX_WMM_QUEUES)) {
+			/* Need to leave spin_lock since bus driver may
+			   sleep while transferring data
+			 */
+			spin_unlock_bh(&priv->tx_desc_lock);
+			//wiphy_err(priv->hw->wiphy, "[call mwl_tx_do_amsdu]\n");
+			tx_skb = mwl_tx_do_amsdu(priv, num,
+					tx_skb, tx_info);
+			spin_lock_bh(&priv->tx_desc_lock);
 		}
 
-
-		spin_lock(&priv->sta_lock);
-
-		list_for_each_entry(sta_info, &priv->sta_list, list) {
-
-			spin_lock_bh(&sta_info->amsdu_lock);
-
-			if (sta_info->amsdu_ctrl.frag[num].num) {
-				if (mwl_tx_available(priv, num)) {
-					sta_info->amsdu_ctrl.frag[num].num = 0;
-					sta_info->amsdu_ctrl.frag[num].cur_pos = NULL;
-					spin_unlock_bh(&sta_info->amsdu_lock);
-					spin_unlock(&priv->sta_lock);
-					spin_unlock_bh(&priv->tx_desc_lock);
-//	wiphy_err(priv->hw->wiphy, "[call mwl_tx_skb2]\n");
-					mwl_tx_skb(priv, num,
-						sta_info->amsdu_ctrl.frag[num].skb);
-					spin_lock_bh(&priv->tx_desc_lock);
-					spin_lock(&priv->sta_lock);
-					spin_lock_bh(&sta_info->amsdu_lock);
-				}
+		/* get next buffer length */
+		next_pkt_len = 0;
+		if (priv->host_if == MWL_IF_SDIO) {
+			next_skb = skb_peek(&priv->txq[num]);
+			if (next_skb != NULL) {
+				next_pkt_len = next_skb->len +
+					sizeof(struct mwl_tx_desc);
 			}
-			spin_unlock_bh(&sta_info->amsdu_lock);
+		} else
+			next_pkt_len = num;
+
+		if (tx_skb) {
+			/* Need to leave spin_lock since bus driver
+			 * may sleep while transferring data
+			 */
+			spin_unlock_bh(&priv->tx_desc_lock);
+			if (mwl_tx_available(priv, next_pkt_len))
+			{
+				//	wiphy_err(priv->hw->wiphy, "[call mwl_tx_skb1]\n");
+				mwl_tx_skb(priv, next_pkt_len, tx_skb);
+			}
+			else {
+				/* skb consumed. Marking as NULL. This code is not
+				 * intended to be executed.
+				 * If it gets executed, following will
+				 * happen - tx_skb can contain an amsdu, which will get
+				 * added to queue head updating the queue length and the
+				 * while () loop will never terminate...
+				 */
+				skb_queue_head(&priv->txq[num], tx_skb);
+			}
+			spin_lock_bh(&priv->tx_desc_lock);
 		}
-		spin_unlock(&priv->sta_lock);
+
+		if (skb_queue_len(&priv->txq[num]) == 0) {
+			spin_lock(&priv->sta_lock);
+
+			list_for_each_entry(sta_info, &priv->sta_list, list) {
+
+				spin_lock_bh(&sta_info->amsdu_lock);
+
+				if (sta_info->amsdu_ctrl.frag[num].num) {
+					if (mwl_tx_available(priv, num)) {
+						sta_info->amsdu_ctrl.frag[num].num = 0;
+						sta_info->amsdu_ctrl.frag[num].cur_pos = NULL;
+						spin_unlock_bh(&sta_info->amsdu_lock);
+						spin_unlock(&priv->sta_lock);
+						spin_unlock_bh(&priv->tx_desc_lock);
+						//	wiphy_err(priv->hw->wiphy, "[call mwl_tx_skb2]\n");
+						mwl_tx_skb(priv, num,
+								sta_info->amsdu_ctrl.frag[num].skb);
+						spin_lock_bh(&priv->tx_desc_lock);
+						spin_lock(&priv->sta_lock);
+						spin_lock_bh(&sta_info->amsdu_lock);
+					}
+				}
+				spin_unlock_bh(&sta_info->amsdu_lock);
+			}
+			spin_unlock(&priv->sta_lock);
+		}
 
 		if (skb_queue_len(&priv->txq[num]) <
-			SYSADPT_TX_WAKE_Q_THRESHOLD) {
+				SYSADPT_TX_WAKE_Q_THRESHOLD) {
 			int queue;
 
 			queue = SYSADPT_TX_WMM_QUEUES - num - 1;
