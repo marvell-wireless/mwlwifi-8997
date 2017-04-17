@@ -377,6 +377,10 @@ static void mwl_mac80211_bss_info_changed_sta(struct ieee80211_hw *hw,
 					      struct ieee80211_bss_conf *info,
 					      u32 changed)
 {
+
+	if (changed & BSS_CHANGED_ERP_SLOT)
+		mwl_fwcmd_set_slot_time(hw, vif->bss_conf.use_short_slot);
+
 	if (changed & BSS_CHANGED_ERP_PREAMBLE)
 		mwl_fwcmd_set_radio_preamble(hw,
 					     vif->bss_conf.use_short_preamble);
@@ -391,6 +395,9 @@ static void mwl_mac80211_bss_info_changed_ap(struct ieee80211_hw *hw,
 					     struct ieee80211_bss_conf *info,
 					     u32 changed)
 {
+
+	if (changed & BSS_CHANGED_ERP_SLOT)
+		mwl_fwcmd_set_slot_time(hw, vif->bss_conf.use_short_slot);
 	if (changed & BSS_CHANGED_ERP_PREAMBLE)
 		mwl_fwcmd_set_radio_preamble(hw,
 					     vif->bss_conf.use_short_preamble);

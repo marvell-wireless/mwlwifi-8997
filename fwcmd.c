@@ -104,6 +104,7 @@ char *mwl_fwcmd_get_cmd_string(unsigned short cmd)
 		{ HOSTCMD_CMD_GET_FW_REGION_CODE_SC4, "GetFwRegionCodeSC4" },
 		{ HOSTCMD_CMD_GET_DEVICE_PWR_TBL_SC4, "GetDevicePwrTblSC4" },
 		{ HOSTCMD_CMD_QUIET_MODE, "QuietMode" },
+		{ HOSTCMD_CMD_802_11_SLOT_TIME, "SetSlotTime" },
 	};
 
 	max_entries = ARRAY_SIZE(cmds);
@@ -216,6 +217,35 @@ static int mwl_fwcmd_exec_cmd(struct mwl_priv *priv, unsigned short cmd)
 
 	if (!busy)
 		priv->in_send_cmd = false;
+
+	return 0;
+}
+
+int mwl_fwcmd_set_slot_time(struct ieee80211_hw *hw, bool short_slot)
+{
+	struct hostcmd_cmd_802_11_slot_time *pcmd;
+	struct mwl_priv *priv = hw->priv;
+
+	wiphy_err(priv->hw->wiphy, "%s(): short_slot_time=%d\n", __FUNCTION__, short_slot);
+
+	pcmd = (struct hostcmd_cmd_802_11_slot_time *)&priv->pcmd_buf[
+			INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
+
+	mutex_lock(&priv->fwcmd_mutex);
+
+	memset(pcmd, 0x00, sizeof(*pcmd));
+	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_802_11_SLOT_TIME);
+	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
+	pcmd->action = cpu_to_le16(WL_SET);
+	pcmd->short_slot = cpu_to_le16(short_slot?1:0);
+
+	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_802_11_SLOT_TIME)) {
+		mutex_unlock(&priv->fwcmd_mutex);
+		wiphy_err(priv->hw->wiphy, "failed execution\n");
+		return -EIO;
+	}
+
+	mutex_unlock(&priv->fwcmd_mutex);
 
 	return 0;
 }

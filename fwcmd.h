@@ -260,6 +260,7 @@ int mwl_fwcmd_quiet_mode(struct ieee80211_hw *hw, bool enable, u32 period,
 			 u32 duration, u32 next_offset);
 
 int mwl_fwcmd_get_survey(struct ieee80211_hw *hw, int rstReg);
+int mwl_fwcmd_set_slot_time(struct ieee80211_hw *hw, bool short_slot);
 
 void mwl_hex_dump(const void *buf, size_t len);
 

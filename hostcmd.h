@@ -73,6 +73,7 @@
 #define HOSTCMD_CMD_GET_DEVICE_PWR_TBL_SC4      0x118B
 #define HOSTCMD_CMD_QUIET_MODE                  0x1201
 #define HOSTCMD_CMD_SET_WFD_IE                  0x1202
+#define HOSTCMD_CMD_802_11_SLOT_TIME		0x1203
 
 /* Define general result code for each command */
 #define HOSTCMD_RESULT_OK                       0x0000
@@ -346,6 +347,14 @@ struct hostcmd_cmd_802_11_radio_control {
 	/* @bit0: 1/0,on/off, @bit1: 1/0, long/short @bit2: 1/0,auto/fix */
 	__le16 control;
 	__le16 radio_on;
+} __packed;
+
+/* HOSTCMD_CMD_802_11_SHORT_SLOT */
+struct hostcmd_cmd_802_11_slot_time {
+	struct hostcmd_header cmd_hdr;
+	__le16 action;
+	/* 0:long slot; 1:short slot */
+	__le16 short_slot;
 } __packed;
 
 /* HOSTCMD_CMD_MEM_ADDR_ACCESS */
