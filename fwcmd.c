@@ -3029,14 +3029,18 @@ void mwl_fwcmd_del_sta_streams(struct ieee80211_hw *hw,
 	struct mwl_ampdu_stream *stream;
 	int i;
 
+	spin_lock_bh(&priv->stream_lock);
 	for (i = 0; i < SYSADPT_TX_AMPDU_QUEUES; i++) {
 		stream = &priv->ampdu[i];
 
 		if (stream->sta == sta) {
-			mwl_fwcmd_destroy_ba(hw, stream->idx);
 			mwl_fwcmd_remove_stream(hw, stream);
+			spin_unlock_bh(&priv->stream_lock);
+			mwl_fwcmd_destroy_ba(hw, stream->idx);
+			spin_lock_bh(&priv->stream_lock);
 		}
 	}
+	spin_unlock_bh(&priv->stream_lock);
 }
 
 int mwl_fwcmd_start_stream(struct ieee80211_hw *hw,

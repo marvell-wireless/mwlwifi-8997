@@ -589,11 +589,7 @@ static int mwl_mac80211_sta_remove(struct ieee80211_hw *hw,
 	cancel_work_sync(&sta_info->rc_update_work);
 
 	mwl_tx_del_sta_amsdu_pkts(sta);
-
-	spin_lock_bh(&priv->stream_lock);
 	mwl_fwcmd_del_sta_streams(hw, sta);
-	spin_unlock_bh(&priv->stream_lock);
-
 	mwl_tx_del_pkts_via_sta(hw, sta);
 
 	rc = mwl_fwcmd_set_new_stn_del(hw, vif, sta->addr);
