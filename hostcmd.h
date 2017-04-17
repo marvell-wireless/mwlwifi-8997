@@ -318,8 +318,7 @@ struct hostcmd_cmd_mac_reg_access {
     struct hostcmd_header cmd_hdr;
     __le16 action;
     __le16 offset;
-    u8 value;
-    u8 reserverd[3];
+    u32 value;
 } __packed;
  
 /* HOSTCMD_CMD_BBP_REG_ACCESS */
