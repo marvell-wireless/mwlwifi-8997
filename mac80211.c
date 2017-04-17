@@ -21,6 +21,7 @@
 #include "dev.h"
 #include "fwcmd.h"
 #include "tx.h"
+#include "main.h"
 
 #define MWL_DRV_NAME        KBUILD_MODNAME
 
@@ -106,7 +107,7 @@ static int mwl_mac80211_start(struct ieee80211_hw *hw)
 	rc = mwl_fwcmd_set_fw_flush_timer(hw, SYSADPT_AMSDU_FLUSH_TIME);
 	if (rc)
 		goto fwcmd_fail;
-	rc = mwl_fwcmd_set_optimization_level(hw, 1);
+	rc = mwl_fwcmd_set_optimization_level(hw, wmm_turbo);
 	if (rc)
 		goto fwcmd_fail;
 

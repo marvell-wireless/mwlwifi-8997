@@ -1,6 +1,9 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+/* WMM Turbo mode */
+extern int wmm_turbo;
+
 #define MWL_DESC         "Marvell 802.11ac Wireless Network Driver"
 
 int mwl_add_card(void *, struct mwl_if_ops *);

@@ -133,6 +133,8 @@ static char cal_file_name[] = {"mwlwifi/WlanCalData_ext.conf"};
 /* CAL data config file */
 static char *cal_data_cfg = cal_file_name;
 
+/* WMM Turbo mode */
+int wmm_turbo = 1;
 
 struct region_code_mapping {
 	const char *alpha2;
@@ -908,6 +910,9 @@ EXPORT_SYMBOL_GPL(mwl_add_card);
 
 module_param(cal_data_cfg, charp, 0);
 MODULE_PARM_DESC(cal_data_cfg, "Calibration data file name");
+
+module_param(wmm_turbo, int, 0);
+MODULE_PARM_DESC(wmm_turbo, "WMM Turbo mode 0:Disable 1:Enable");
 
 MODULE_DESCRIPTION(MWL_DESC);
 MODULE_VERSION(MWL_DRV_VERSION);
