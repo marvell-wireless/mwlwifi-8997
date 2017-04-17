@@ -90,7 +90,7 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 	unsigned long page = get_zeroed_page(GFP_KERNEL);
 	int tx_num = 4, rx_num = 4;
 	char *p = (char *)page;
-	int len = 0, size = PAGE_SIZE;
+	int len = 0, size = PAGE_SIZE, i;
 	ssize_t ret;
 
 	if (!p)
@@ -179,6 +179,25 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 			readl(card->iobase1 +
 			MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
 	}
+
+#if 1
+	for (i=0; i<7; i++){
+		u32 cwmin, cwmax, txop, aifsn;
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_CW0_MIN+(i*8), &cwmin))
+			cwmin = 0xdead;
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_CW0_MAX+(i*8), &cwmax))
+			cwmax = 0xdead;
+
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_TXOP0+(i*4), &txop))
+			cwmax = 0xdead;
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_AIFSN0+(i*4), &aifsn))
+			cwmax = 0xdead;
+
+		len += scnprintf(p + len, size - len,
+			"TCQ%d : cwmin=%d cwmax=%d txop=%d aifsn=%d\n",
+			i, cwmin, cwmax, txop, aifsn);
+	}
+#endif
 
 	len += scnprintf(p + len, size - len, "\n");
 

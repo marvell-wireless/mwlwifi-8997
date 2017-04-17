@@ -14,6 +14,13 @@
 #define MCU_TXPE_CNT              MAC_REG_ADDR(0x06A4)
 #define MCU_LAST_READ             MAC_REG_ADDR(0x06A8)
 
+#define MAC_REG_TCQ0_WRPTR		MAC_REG_ADDR(0xa040)
+#define MAC_REG_TCQ0_RDPTR		MAC_REG_ADDR(0xa044)
+
+#define MAC_REG_CW0_MIN		MAC_REG_ADDR(0xa0a0)
+#define MAC_REG_CW0_MAX		MAC_REG_ADDR(0xa0a4)
+#define MAC_REG_TXOP0		MAC_REG_ADDR(0xa260)
+#define MAC_REG_AIFSN0		MAC_REG_ADDR(0xa680)
 
 struct mwl_pcie_card {
 	struct mwl_priv *priv;
