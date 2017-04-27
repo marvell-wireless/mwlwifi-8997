@@ -381,7 +381,8 @@ static void mwl_set_ht_caps(struct mwl_priv *priv,
 	band->ht_cap.cap |= IEEE80211_HT_CAP_SGI_40;
 	band->ht_cap.cap |= IEEE80211_HT_CAP_DSSSCCK40;
 
-	if (priv->chip_type == MWL8997) {
+	if ((priv->chip_type == MWL8997) &&
+			(priv->antenna_tx != ANTENNA_TX_1)){
 		band->ht_cap.cap |= IEEE80211_HT_CAP_TX_STBC;
 		band->ht_cap.cap |= (1 << IEEE80211_HT_CAP_RX_STBC_SHIFT);
 	}
@@ -392,7 +393,10 @@ static void mwl_set_ht_caps(struct mwl_priv *priv,
 	band->ht_cap.ampdu_density = IEEE80211_HT_MPDU_DENSITY_4;
 
 	band->ht_cap.mcs.rx_mask[0] = 0xff;
-	band->ht_cap.mcs.rx_mask[1] = 0xff;
+
+	if (priv->antenna_rx != ANTENNA_RX_1)
+		band->ht_cap.mcs.rx_mask[1] = 0xff;
+
 	if (priv->antenna_rx == ANTENNA_RX_4_AUTO)
 		band->ht_cap.mcs.rx_mask[2] = 0xff;
 	band->ht_cap.mcs.rx_mask[4] = 0x01;
@@ -411,14 +415,18 @@ static void mwl_set_vht_caps(struct mwl_priv *priv,
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_RXLDPC;
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_SHORT_GI_80;
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_RXSTBC_1;
-	band->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE;
+
+	if (priv->antenna_tx != ANTENNA_TX_1)
+		band->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE;
+
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE;
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK;
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_RX_ANTENNA_PATTERN;
 	band->vht_cap.cap |= IEEE80211_VHT_CAP_TX_ANTENNA_PATTERN;
 
 	if (priv->chip_type == MWL8997) {
-		band->vht_cap.cap |= IEEE80211_VHT_CAP_TXSTBC;
+		if (priv->antenna_tx != ANTENNA_TX_1)
+			band->vht_cap.cap |= IEEE80211_VHT_CAP_TXSTBC;
 	}
 
 	if (priv->chip_type == MWL8964) {
@@ -426,12 +434,18 @@ static void mwl_set_vht_caps(struct mwl_priv *priv,
 		band->vht_cap.cap |= IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
 	}
 
-	if (priv->antenna_rx == ANTENNA_RX_2)
+	if (priv->antenna_rx == ANTENNA_RX_1)
+		band->vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(0xfffe);
+	else if (priv->antenna_rx == ANTENNA_RX_2)
 		band->vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(0xfffa);
 	else
 		band->vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(0xffea);
 
-	if (priv->antenna_tx == ANTENNA_TX_2) {
+	if (priv->antenna_tx == ANTENNA_TX_1) {
+		band->vht_cap.vht_mcs.tx_mcs_map = cpu_to_le16(0xfffe);
+		antenna_num = 1;
+	}
+	else if (priv->antenna_tx == ANTENNA_TX_2) {
 		band->vht_cap.vht_mcs.tx_mcs_map = cpu_to_le16(0xfffa);
 		antenna_num = 2;
 	} else
@@ -454,11 +468,16 @@ static void mwl_set_vht_caps(struct mwl_priv *priv,
 	}
 }
 
-static void mwl_set_caps(struct mwl_priv *priv)
+void mwl_set_caps(struct mwl_priv *priv)
 {
 	struct ieee80211_hw *hw;
 
 	hw = priv->hw;
+
+	memset(&priv->band_24, 0,
+			sizeof(struct ieee80211_supported_band));
+	memset(&priv->band_50, 0,
+			sizeof(struct ieee80211_supported_band));
 
 	/* set up band information for 2.4G */
 	if (!priv->disable_2g) {
@@ -741,6 +760,9 @@ static int mwl_wl_init(struct mwl_priv *priv)
 
 	mwl_fwcmd_radio_disable(hw);
 
+	hw->wiphy->available_antennas_tx = MWL_8997_DEF_TX_ANT_BMP;
+	hw->wiphy->available_antennas_rx = MWL_8997_DEF_RX_ANT_BMP;
+
 	mwl_fwcmd_rf_antenna(hw, WL_ANTENNATYPE_TX, priv->antenna_tx);
 
 	mwl_fwcmd_rf_antenna(hw, WL_ANTENNATYPE_RX, priv->antenna_rx);
@@ -878,11 +900,16 @@ int mwl_add_card(void *card, struct mwl_if_ops *if_ops)
 		   priv->disable_2g ? "disabled" : "enabled",
 		   priv->disable_5g ? "disabled" : "enabled");
 
-	if (priv->antenna_tx == ANTENNA_TX_2)
+	if (priv->antenna_tx == ANTENNA_TX_1)
+		tx_num = 1;
+	else if (priv->antenna_tx == ANTENNA_TX_2)
 		tx_num = 2;
 	else if (priv->antenna_tx == ANTENNA_TX_3)
 		tx_num = 3;
-	if (priv->antenna_rx == ANTENNA_RX_2)
+
+	if (priv->antenna_rx == ANTENNA_RX_1)
+		rx_num = 1;
+	else if (priv->antenna_rx == ANTENNA_RX_2)
 		rx_num = 2;
 	else if (priv->antenna_rx == ANTENNA_RX_3)
 		rx_num = 3;

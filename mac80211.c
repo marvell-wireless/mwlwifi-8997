@@ -986,6 +986,54 @@ static void mwl_mac80211_sw_scan_complete(struct ieee80211_hw *hw,
 	priv->sw_scanning = false;
 }
 
+int mwl_mac80211_set_ant(struct ieee80211_hw *hw, u32 tx_ant, u32 rx_ant)
+{
+	struct mwl_priv *priv = hw->priv;
+
+	wiphy_err(hw->wiphy, "set ant: tx=0x%x rx=0x%x\n",
+			tx_ant, rx_ant);
+
+	if (tx_ant == 0x3)
+		priv->antenna_tx = ANTENNA_TX_2;
+	else
+		priv->antenna_tx = ANTENNA_TX_1;
+
+	if (rx_ant == 0x3)
+		priv->antenna_rx = ANTENNA_RX_2;
+	else
+		priv->antenna_rx = ANTENNA_RX_1;
+
+	wiphy_err(hw->wiphy, "set ant(internal): tx=0x%x rx=0x%x\n",
+			priv->antenna_tx,
+			priv->antenna_rx);
+
+	mwl_fwcmd_rf_antenna(hw, WL_ANTENNATYPE_TX, priv->antenna_tx);
+	mwl_fwcmd_rf_antenna(hw, WL_ANTENNATYPE_RX, priv->antenna_rx);
+
+	mwl_set_caps(priv);
+
+	return 0;
+}
+
+int mwl_mac80211_get_ant(struct ieee80211_hw *hw, u32 *tx_ant, u32 *rx_ant)
+{
+	struct mwl_priv *priv = hw->priv;
+
+	if (priv->antenna_tx == ANTENNA_TX_2)
+		*tx_ant = 0x3;
+	else
+		*tx_ant = 0x1;
+
+	if (priv->antenna_rx == ANTENNA_RX_2)
+		*rx_ant = 0x3;
+	else
+		*rx_ant = 0x1;
+
+	wiphy_err(hw->wiphy, "get ant: tx=0x%x rx=0x%x\n",
+			*tx_ant, *rx_ant);
+	return 0;
+}
+
 const struct ieee80211_ops mwl_mac80211_ops = {
 	.tx                         = mwl_mac80211_tx,
 	.start                      = mwl_mac80211_start,
@@ -1009,4 +1057,8 @@ const struct ieee80211_ops mwl_mac80211_ops = {
 	.cancel_remain_on_channel   = mwl_mac80211_cancel_remain_on_channel,
 	.sw_scan_start              = mwl_mac80211_sw_scan_start,
 	.sw_scan_complete           = mwl_mac80211_sw_scan_complete,
+
+	.set_antenna		= mwl_mac80211_set_ant,
+	.get_antenna		= mwl_mac80211_get_ant,
+
 };

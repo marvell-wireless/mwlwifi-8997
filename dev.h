@@ -107,10 +107,16 @@
 #define EAGLE_TXD_STATUS_FW_OWNED           0x80000000
 
 /* Antenna control */
+
+#define MWL_8997_DEF_TX_ANT_BMP	(0x3)
+#define MWL_8997_DEF_RX_ANT_BMP	(0x3)
+
 #define ANTENNA_TX_4_AUTO                   0
+#define ANTENNA_TX_1                        1
 #define ANTENNA_TX_2                        3
 #define ANTENNA_TX_3                        7
 #define ANTENNA_RX_4_AUTO                   0
+#define ANTENNA_RX_1                        1
 #define ANTENNA_RX_2                        2
 #define ANTENNA_RX_3                        3
 
