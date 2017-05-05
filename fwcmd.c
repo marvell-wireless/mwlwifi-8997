@@ -2972,8 +2972,11 @@ int mwl_fwcmd_create_ba(struct ieee80211_hw *hw,
 		 IEEE80211_HT_AMPDU_PARM_FACTOR) |
 		((stream->sta->ht_cap.ampdu_density << 2) &
 		 IEEE80211_HT_AMPDU_PARM_DENSITY);
+
+#if 0
 	pcmd->ba_info.create_params.reset_seq_no = 1;
 	pcmd->ba_info.create_params.current_seq = cpu_to_le16(0);
+#endif
 
 	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_BASTREAM)) {
 		mutex_unlock(&priv->fwcmd_mutex);
