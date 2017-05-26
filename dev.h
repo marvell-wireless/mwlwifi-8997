@@ -187,7 +187,7 @@ struct mwl_tx_pwr_tbl {
 	u8 channel;
 	u8 setcap;
 	u16 txantenna2;
-	u16 tx_power[SYSADPT_TX_POWER_LEVEL_TOTAL];
+	u16 tx_power[SYSADPT_TX_GRP_PWR_LEVEL_TOTAL];
 	bool cdd;
 };
 
@@ -427,8 +427,8 @@ struct mwl_priv {
 	bool cdd;
 	u16 txantenna2;
 	u8 powinited;
-	u16 max_tx_pow[SYSADPT_TX_POWER_LEVEL_TOTAL]; /* max tx power (dBm) */
-	u16 target_powers[SYSADPT_TX_POWER_LEVEL_TOTAL]; /* target powers   */
+	u16 max_tx_pow[SYSADPT_TX_GRP_PWR_LEVEL_TOTAL]; /* max tx power (dBm) */
+	u16 target_powers[SYSADPT_TX_GRP_PWR_LEVEL_TOTAL]; /* target powers   */
 
 	void *intf;
 	struct mwl_if_ops if_ops;

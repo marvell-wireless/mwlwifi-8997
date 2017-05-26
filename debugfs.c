@@ -430,7 +430,7 @@ static ssize_t mwl_debugfs_device_pwrtbl_read(struct file *file,
 	for (i = 0; i < priv->number_of_channels; i++) {
 		len += scnprintf(p + len, size - len, "%3d ",
 				 priv->device_pwr_tbl[i].channel);
-		for (j = 0; j < SYSADPT_TX_POWER_LEVEL_TOTAL; j++)
+		for (j = 0; j < SYSADPT_TX_GRP_PWR_LEVEL_TOTAL; j++)
 			len += scnprintf(p + len, size - len, "%3d ",
 					 priv->device_pwr_tbl[i].tx_pwr[j]);
 		len += scnprintf(p + len, size - len, "%3d ",
