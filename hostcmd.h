@@ -73,7 +73,8 @@
 #define HOSTCMD_CMD_GET_DEVICE_PWR_TBL_SC4      0x118B
 #define HOSTCMD_CMD_QUIET_MODE                  0x1201
 #define HOSTCMD_CMD_SET_WFD_IE                  0x1202
-#define HOSTCMD_CMD_802_11_SLOT_TIME		0x1203
+#define HOSTCMD_CMD_802_11_SLOT_TIME			0x1203
+#define HOSTCMD_CMD_EDMAC_CTRL					0x1204
 
 /* Define general result code for each command */
 #define HOSTCMD_RESULT_OK                       0x0000
@@ -156,6 +157,18 @@
 #define WFD_IE_SET_PROBE_RESPONSE               1
 
 #define HW_SET_PARMS_FEATURES_HOST_PROBE_RESP   0x00000020
+
+#define EDMAC_2G_ENABLE_MASK					0x0000000F
+#define EDMAC_2G_ENABLE_SHIFT					0x0
+#define EDMAC_2G_THRESHOLD_OFFSET_MASK			0x000000F0
+#define EDMAC_2G_THRESHOLD_OFFSET_SHIFT			0x4
+#define EDMAC_5G_ENABLE_MASK					0x00000F00
+#define EDMAC_5G_ENABLE_SHIFT					0x8
+#define EDMAC_5G_THRESHOLD_OFFSET_MASK			0x0000F000
+#define EDMAC_5G_THRESHOLD_OFFSET_SHIFT			0xC
+#define EDMAC_QLOCK_BITMAP_MASK					0x00FF0000
+#define EDMAC_QLOCK_BITMAP_SHIFT				0x10
+#define EDMAC_FORCE_LEGACY_APPROACH             0x10000000
 
 enum {
 	WL_DISABLE = 0,
@@ -355,6 +368,18 @@ struct hostcmd_cmd_802_11_slot_time {
 	__le16 action;
 	/* 0:long slot; 1:short slot */
 	__le16 short_slot;
+} __packed;
+
+/* HOSTCMD_CMD_EDMAC_CTRL */
+struct hostcmd_cmd_edmac_ctrl {
+	struct hostcmd_header cmd_hdr;
+	__le16 action;
+	__le16 ed_ctrl_2g;
+	__le16 ed_offset_2g;
+	__le16 ed_ctrl_5g;
+	__le16 ed_offset_5g;
+	__le16 ed_bitmap_txq_lock;
+    __le16 ed_force_legacy_mode;
 } __packed;
 
 /* HOSTCMD_CMD_MEM_ADDR_ACCESS */

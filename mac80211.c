@@ -110,6 +110,9 @@ static int mwl_mac80211_start(struct ieee80211_hw *hw)
 	rc = mwl_fwcmd_set_optimization_level(hw, wmm_turbo);
 	if (rc)
 		goto fwcmd_fail;
+	rc = mwl_fwcmd_config_EDMACCtrl(hw, EDMAC_Ctrl);
+	if (rc)
+		goto fwcmd_fail;
 
 	ieee80211_wake_queues(hw);
 	return 0;
