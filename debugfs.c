@@ -51,6 +51,7 @@ static const struct file_operations mwl_debugfs_##name##_fops = { \
 	.open = simple_open, \
 }
 
+
 static const char chipname[MWLUNKNOWN][8] = {
 	"88W8864",
 	"88W8897",
@@ -824,6 +825,43 @@ done:
 	return ret;
 }
 
+static ssize_t mwl_debugfs_otp_data_read(struct file *file,
+		char __user *ubuf,
+		size_t count, loff_t *ppos)
+{
+	struct mwl_priv *priv = (struct mwl_priv *)file->private_data;
+
+	return simple_read_from_buffer(ubuf, count, ppos,
+			priv->otp_data.buf,
+			priv->otp_data.len);
+}
+
+static ssize_t mwl_debugfs_otp_data_write(struct file *file,
+					 const char __user *ubuf,
+					 size_t count, loff_t *ppos)
+{
+//	struct mwl_priv *priv = (struct mwl_priv *)file->private_data;
+	unsigned long addr = get_zeroed_page(GFP_KERNEL);
+	char *buf = (char *)addr;
+	size_t buf_size = min_t(size_t, count, PAGE_SIZE - 1);
+	ssize_t ret;
+
+	if (!buf)
+		return -ENOMEM;
+
+	if (copy_from_user(buf, ubuf, buf_size)) {
+		ret = -EFAULT;
+		goto err;
+	}
+
+	mwl_hex_dump(buf, buf_size);
+
+err:
+	free_page(addr);
+	return 0;
+}
+
+
 MWLWIFI_DEBUGFS_FILE_READ_OPS(info);
 MWLWIFI_DEBUGFS_FILE_READ_OPS(vif);
 MWLWIFI_DEBUGFS_FILE_READ_OPS(sta);
@@ -834,6 +872,7 @@ MWLWIFI_DEBUGFS_FILE_OPS(dfs_channel);
 MWLWIFI_DEBUGFS_FILE_OPS(dfs_radar);
 MWLWIFI_DEBUGFS_FILE_OPS(thermal);
 MWLWIFI_DEBUGFS_FILE_OPS(regrdwr);
+MWLWIFI_DEBUGFS_FILE_OPS(otp_data);
 
 void mwl_debugfs_init(struct ieee80211_hw *hw)
 {
@@ -856,6 +895,7 @@ void mwl_debugfs_init(struct ieee80211_hw *hw)
 	MWLWIFI_DEBUGFS_ADD_FILE(dfs_radar);
 	MWLWIFI_DEBUGFS_ADD_FILE(thermal);
 	MWLWIFI_DEBUGFS_ADD_FILE(regrdwr);
+	MWLWIFI_DEBUGFS_ADD_FILE(otp_data);
 }
 
 void mwl_debugfs_remove(struct ieee80211_hw *hw)

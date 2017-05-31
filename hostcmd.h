@@ -45,6 +45,7 @@
 #define HOSTCMD_CMD_SET_FIXED_RATE              0x0126
 #define HOSTCMD_CMD_SET_IES                     0x0127
 #define HOSTCMD_CMD_SET_LINKADAPT_CS_MODE       0x0129
+#define HOSTCMD_CMD_DUMP_OTP_DATA               0x0142
 #define HOSTCMD_CMD_SET_MAC_ADDR                0x0202 /* per-vif */
 #define HOSTCMD_CMD_SET_RATE_ADAPT_MODE         0x0203
 #define HOSTCMD_CMD_GET_WATCHDOG_BITMAP         0x0205
@@ -1073,6 +1074,11 @@ struct hostcmd_cmd_quiet_mode {
 	__le32 period;
 	__le32 duration;
 	__le32 next_offset;
+} __packed;
+
+struct hostcmd_cmd_dump_otp_data {
+	struct hostcmd_header cmd_hdr;
+	u8 pload[0];
 } __packed;
 
 #endif /* _HOSTCMD_H_ */

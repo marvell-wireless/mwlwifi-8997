@@ -404,6 +404,13 @@ struct mwl_if_ops {
 	void (*multi_port_resync)(struct mwl_priv *);
 };
 
+#define MWL_OTP_BUF_SIZE	(256*8)		//258 lines * 8 bytes
+
+struct otp_data {
+	u8 buf[MWL_OTP_BUF_SIZE];
+	u32 len;	// Actual size of data in buf[]
+};
+
 struct mwl_priv {
 	struct ieee80211_hw *hw;
 	struct firmware *fw_ucode;
@@ -567,6 +574,8 @@ struct mwl_priv {
 	struct work_struct rx_defer_work;
 	struct sk_buff_head rx_defer_skb_q;
 	bool is_rx_defer_schedule;
+
+	struct otp_data otp_data;
 };
 
 struct beacon_info {

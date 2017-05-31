@@ -761,6 +761,12 @@ static int mwl_wl_init(struct mwl_priv *priv)
 			   "firmware region code: %x\n", priv->fw_region_code);
 	}
 
+	rc = mwl_fwcmd_dump_otp_data(hw);
+	if (rc) {
+		wiphy_info(hw->wiphy, "OTP Dump failed\n");
+	}
+
+
 	mwl_fwcmd_radio_disable(hw);
 
 	hw->wiphy->available_antennas_tx = MWL_8997_DEF_TX_ANT_BMP;
