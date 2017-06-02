@@ -90,7 +90,7 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 	unsigned long page = get_zeroed_page(GFP_KERNEL);
 	int tx_num = 4, rx_num = 4;
 	char *p = (char *)page;
-	int len = 0, size = PAGE_SIZE;
+	int len = 0, size = PAGE_SIZE, i;
 	ssize_t ret;
 
 	if (!p)
@@ -129,6 +129,8 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 	len += scnprintf(p + len, size - len, "antenna: %d %d\n",
 			 tx_num, rx_num);
 
+	len += scnprintf(p + len, size - len, "irq number: %d\n", priv->irq);
+
 	if (priv->if_ops.dbg_info != NULL)
 		len += priv->if_ops.dbg_info(priv , p, size, len);
 
@@ -144,6 +146,9 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 			 "macid used: %08x\n", priv->macids_used);
 	len += scnprintf(p + len, size - len,
 			 "qe trigger number: %d\n", priv->qe_trigger_num);
+	len += scnprintf(p + len, size - len,
+			 "radio: %s\n", priv->radio_on ? "enable" : "disable");
+
 
 	len += scnprintf(p + len, size - len,
 			"OS TxQ status = [ %d %d %d %d ]\n",
@@ -161,6 +166,7 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 			"num_valid_interrupts = %lu\n",
 			priv->valid_interrupt_cnt);
 
+	// Dump PFU regs
 	if (((priv->host_if == MWL_IF_PCIE) &&
 		IS_PFU_ENABLED(priv->chip_type))) {
 		struct mwl_pcie_card *card = priv->intf;
@@ -178,6 +184,24 @@ static ssize_t mwl_debugfs_info_read(struct file *file, char __user *ubuf,
 			"PCIe IntMask = 0x%x\n",
 			readl(card->iobase1 +
 			MACREG_REG_A2H_INTERRUPT_STATUS_MASK));
+	}
+
+	// Dump WMM regs
+	for (i=0; i<7; i++){
+		u32 cwmin, cwmax, txop, aifsn;
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_CW0_MIN+(i*8), &cwmin))
+			cwmin = 0xdead;
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_CW0_MAX+(i*8), &cwmax))
+			cwmax = 0xdead;
+
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_TXOP0+(i*4), &txop))
+			cwmax = 0xdead;
+		if(mwl_fwcmd_reg_mac(priv->hw, WL_GET, MAC_REG_AIFSN0+(i*4), &aifsn))
+			cwmax = 0xdead;
+
+		len += scnprintf(p + len, size - len,
+			"TCQ%d : cwmin=%d cwmax=%d txop=%d aifsn=%d\n",
+			i, cwmin, cwmax, txop, aifsn);
 	}
 
 	len += scnprintf(p + len, size - len, "\n");
@@ -350,6 +374,8 @@ static ssize_t mwl_debugfs_ampdu_read(struct file *file, char __user *ubuf,
 	spin_lock_bh(&priv->stream_lock);
 	for (i = 0; i < SYSADPT_TX_AMPDU_QUEUES; i++) {
 		stream = &priv->ampdu[i];
+		if (!stream->state)
+			continue;
 		len += scnprintf(p + len, size - len, "stream: %d\n", i);
 		len += scnprintf(p + len, size - len, "idx: %u\n", stream->idx);
 		len += scnprintf(p + len, size - len,
@@ -411,7 +437,7 @@ static ssize_t mwl_debugfs_device_pwrtbl_read(struct file *file,
 	for (i = 0; i < priv->number_of_channels; i++) {
 		len += scnprintf(p + len, size - len, "%3d ",
 				 priv->device_pwr_tbl[i].channel);
-		for (j = 0; j < SYSADPT_TX_POWER_LEVEL_TOTAL; j++)
+		for (j = 0; j < SYSADPT_TX_GRP_PWR_LEVEL_TOTAL; j++)
 			len += scnprintf(p + len, size - len, "%3d ",
 					 priv->device_pwr_tbl[i].tx_pwr[j]);
 		len += scnprintf(p + len, size - len, "%3d ",
@@ -523,8 +549,10 @@ static ssize_t mwl_debugfs_dfs_channel_read(struct file *file,
 		return -ENOMEM;
 
 	sband = priv->hw->wiphy->bands[NL80211_BAND_5GHZ];
-	if (!sband)
-		return -EINVAL;
+	if (!sband) {
+		ret = -EINVAL;
+		goto err;
+	}
 
 	len += scnprintf(p + len, size - len, "\n");
 	for (i = 0; i < sband->n_channels; i++) {
@@ -543,8 +571,9 @@ static ssize_t mwl_debugfs_dfs_channel_read(struct file *file,
 	len += scnprintf(p + len, size - len, "\n");
 
 	ret = simple_read_from_buffer(ubuf, count, ppos, p, len);
-	free_page(page);
 
+err:
+	free_page(page);
 	return ret;
 }
 
@@ -717,6 +746,40 @@ err:
 	return ret;
 }
 
+static int mwl_debugfs_reg_access(struct mwl_priv *priv, bool write)
+{
+	struct ieee80211_hw *hw = priv->hw;
+	u8 set;
+	int ret = -EINVAL;
+
+	set = write ? WL_SET : WL_GET;
+
+	switch (priv->reg_type) {
+	case MWL_ACCESS_MAC:
+		ret = mwl_fwcmd_reg_mac(hw, set, priv->reg_offset,
+				       &priv->reg_value);
+		break;
+	case MWL_ACCESS_RF:
+		ret = mwl_fwcmd_reg_rf(hw, set, priv->reg_offset,
+				       &priv->reg_value);
+		break;
+	case MWL_ACCESS_BBP:
+		ret = mwl_fwcmd_reg_bb(hw, set, priv->reg_offset,
+				       &priv->reg_value);
+		break;
+	case MWL_ACCESS_CAU:
+		ret = mwl_fwcmd_reg_cau(hw, set, priv->reg_offset,
+					&priv->reg_value);
+		break;
+	default:
+		// Interface specific
+		if (priv->if_ops.dbg_reg_access != NULL)
+			ret = priv->if_ops.dbg_reg_access(priv, write);
+	}
+
+	return ret;
+}
+
 static ssize_t mwl_debugfs_regrdwr_read(struct file *file, char __user *ubuf,
 					size_t count, loff_t *ppos)
 {
@@ -724,7 +787,10 @@ static ssize_t mwl_debugfs_regrdwr_read(struct file *file, char __user *ubuf,
 	unsigned long page = get_zeroed_page(GFP_KERNEL);
 	char *p = (char *)page;
 	int len = 0, size = PAGE_SIZE;
-	int ret = 0;
+	ssize_t ret;
+
+	if (*ppos)
+		return len;
 
 	if (!p)
 		return -ENOMEM;
@@ -732,23 +798,17 @@ static ssize_t mwl_debugfs_regrdwr_read(struct file *file, char __user *ubuf,
 	if (!priv->reg_type) {
 		/* No command has been given */
 		len += scnprintf(p + len, size - len, "0");
+		ret = -EINVAL;
 		goto none;
 	}
 
 	/* Set command has been given */
 	if (priv->reg_value != UINT_MAX) {
-		if (priv->if_ops.dbg_reg_access != NULL)
-			ret = priv->if_ops.dbg_reg_access(priv, true);
-		else
-			ret = -EINVAL;
-
+		ret = mwl_debugfs_reg_access(priv, true);
 		goto done;
 	}
 	/* Get command has been given */
-	if (priv->if_ops.dbg_reg_access != NULL)
-		ret = priv->if_ops.dbg_reg_access(priv, false);
-	else
-		ret = -EINVAL;
+	ret = mwl_debugfs_reg_access(priv, false);
 
 done:
 	if (!ret)
@@ -757,14 +817,13 @@ done:
 				 priv->reg_value);
 	else
 		len += scnprintf(p + len, size - len,
-				 "error: %d(%u 0x%08x 0x%08x)\n",
+				 "error: %lu(%u 0x%08x 0x%08x)\n",
 				 ret, priv->reg_type, priv->reg_offset,
 				 priv->reg_value);
 
 	ret = simple_read_from_buffer(ubuf, count, ppos, p, len);
 
 none:
-
 	free_page(page);
 	return ret;
 }
@@ -777,7 +836,7 @@ static ssize_t mwl_debugfs_regrdwr_write(struct file *file,
 	unsigned long addr = get_zeroed_page(GFP_KERNEL);
 	char *buf = (char *)addr;
 	size_t buf_size = min_t(size_t, count, PAGE_SIZE - 1);
-	int ret;
+	ssize_t ret;
 	u32 reg_type = 0, reg_offset = 0, reg_value = UINT_MAX;
 
 	if (!buf)
@@ -785,25 +844,62 @@ static ssize_t mwl_debugfs_regrdwr_write(struct file *file,
 
 	if (copy_from_user(buf, ubuf, buf_size)) {
 		ret = -EFAULT;
-		goto done;
+		goto err;
 	}
 
 	ret = sscanf(buf, "%u %x %x", &reg_type, &reg_offset, &reg_value);
 
 	if (!reg_type) {
 		ret = -EINVAL;
-		goto done;
+		goto err;
 	} else {
 		priv->reg_type = reg_type;
 		priv->reg_offset = reg_offset;
 		priv->reg_value = reg_value;
 		ret = count;
 	}
-done:
 
+err:
 	free_page(addr);
 	return ret;
 }
+
+static ssize_t mwl_debugfs_otp_data_read(struct file *file,
+		char __user *ubuf,
+		size_t count, loff_t *ppos)
+{
+	struct mwl_priv *priv = (struct mwl_priv *)file->private_data;
+
+	return simple_read_from_buffer(ubuf, count, ppos,
+			priv->otp_data.buf,
+			priv->otp_data.len);
+}
+
+static ssize_t mwl_debugfs_otp_data_write(struct file *file,
+					 const char __user *ubuf,
+					 size_t count, loff_t *ppos)
+{
+//	struct mwl_priv *priv = (struct mwl_priv *)file->private_data;
+	unsigned long addr = get_zeroed_page(GFP_KERNEL);
+	char *buf = (char *)addr;
+	size_t buf_size = min_t(size_t, count, PAGE_SIZE - 1);
+	ssize_t ret = 0;
+
+	if (!buf)
+		return -ENOMEM;
+
+	if (copy_from_user(buf, ubuf, buf_size)) {
+		ret = -EFAULT;
+		goto err;
+	}
+
+	mwl_hex_dump(buf, buf_size);
+
+err:
+	free_page(addr);
+	return ret;
+}
+
 
 MWLWIFI_DEBUGFS_FILE_READ_OPS(info);
 MWLWIFI_DEBUGFS_FILE_READ_OPS(vif);
@@ -815,6 +911,7 @@ MWLWIFI_DEBUGFS_FILE_OPS(dfs_channel);
 MWLWIFI_DEBUGFS_FILE_OPS(dfs_radar);
 MWLWIFI_DEBUGFS_FILE_OPS(thermal);
 MWLWIFI_DEBUGFS_FILE_OPS(regrdwr);
+MWLWIFI_DEBUGFS_FILE_OPS(otp_data);
 
 void mwl_debugfs_init(struct ieee80211_hw *hw)
 {
@@ -837,6 +934,7 @@ void mwl_debugfs_init(struct ieee80211_hw *hw)
 	MWLWIFI_DEBUGFS_ADD_FILE(dfs_radar);
 	MWLWIFI_DEBUGFS_ADD_FILE(thermal);
 	MWLWIFI_DEBUGFS_ADD_FILE(regrdwr);
+	MWLWIFI_DEBUGFS_ADD_FILE(otp_data);
 }
 
 void mwl_debugfs_remove(struct ieee80211_hw *hw)

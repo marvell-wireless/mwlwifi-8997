@@ -30,7 +30,7 @@
 #include "pfu.h"
 
 #define MWL_DRV_NAME     KBUILD_MODNAME
-#define MWL_DRV_VERSION	 "10.3.3.0-20170210"
+#define MWL_DRV_VERSION	 "P11-20170531"
 
 
 /* Map to 0x80000000 (Bus control) on BAR0 */
@@ -107,10 +107,16 @@
 #define EAGLE_TXD_STATUS_FW_OWNED           0x80000000
 
 /* Antenna control */
+
+#define MWL_8997_DEF_TX_ANT_BMP	(0x3)
+#define MWL_8997_DEF_RX_ANT_BMP	(0x3)
+
 #define ANTENNA_TX_4_AUTO                   0
+#define ANTENNA_TX_1                        1
 #define ANTENNA_TX_2                        3
 #define ANTENNA_TX_3                        7
 #define ANTENNA_RX_4_AUTO                   0
+#define ANTENNA_RX_1                        1
 #define ANTENNA_RX_2                        2
 #define ANTENNA_RX_3                        3
 
@@ -181,7 +187,7 @@ struct mwl_tx_pwr_tbl {
 	u8 channel;
 	u8 setcap;
 	u16 txantenna2;
-	u16 tx_power[SYSADPT_TX_POWER_LEVEL_TOTAL];
+	u16 tx_power[SYSADPT_TX_GRP_PWR_LEVEL_TOTAL];
 	bool cdd;
 };
 
@@ -398,6 +404,13 @@ struct mwl_if_ops {
 	void (*multi_port_resync)(struct mwl_priv *);
 };
 
+#define MWL_OTP_BUF_SIZE	(256*8)		//258 lines * 8 bytes
+
+struct otp_data {
+	u8 buf[MWL_OTP_BUF_SIZE];
+	u32 len;	// Actual size of data in buf[]
+};
+
 struct mwl_priv {
 	struct ieee80211_hw *hw;
 	struct firmware *fw_ucode;
@@ -421,8 +434,8 @@ struct mwl_priv {
 	bool cdd;
 	u16 txantenna2;
 	u8 powinited;
-	u16 max_tx_pow[SYSADPT_TX_POWER_LEVEL_TOTAL]; /* max tx power (dBm) */
-	u16 target_powers[SYSADPT_TX_POWER_LEVEL_TOTAL]; /* target powers   */
+	u16 max_tx_pow[SYSADPT_TX_GRP_PWR_LEVEL_TOTAL]; /* max tx power (dBm) */
+	u16 target_powers[SYSADPT_TX_GRP_PWR_LEVEL_TOTAL]; /* target powers   */
 
 	void *intf;
 	struct mwl_if_ops if_ops;
@@ -561,6 +574,8 @@ struct mwl_priv {
 	struct work_struct rx_defer_work;
 	struct sk_buff_head rx_defer_skb_q;
 	bool is_rx_defer_schedule;
+
+	struct otp_data otp_data;
 };
 
 struct beacon_info {
