@@ -802,15 +802,10 @@ static ssize_t mwl_debugfs_regrdwr_read(struct file *file, char __user *ubuf,
 		goto none;
 	}
 
-	/* Set command has been given */
-	if (priv->reg_value != UINT_MAX) {
-		ret = mwl_debugfs_reg_access(priv, true);
-		goto done;
-	}
 	/* Get command has been given */
 	ret = mwl_debugfs_reg_access(priv, false);
 
-done:
+//done:
 	if (!ret)
 		len += scnprintf(p + len, size - len, "%u 0x%08x 0x%08x\n",
 				 priv->reg_type, priv->reg_offset,
@@ -849,13 +844,27 @@ static ssize_t mwl_debugfs_regrdwr_write(struct file *file,
 
 	ret = sscanf(buf, "%u %x %x", &reg_type, &reg_offset, &reg_value);
 
+	if ((ret != 2) && (ret != 3)) {
+		ret = -EINVAL;
+		goto err;
+	}
+
 	if (!reg_type) {
 		ret = -EINVAL;
 		goto err;
 	} else {
 		priv->reg_type = reg_type;
 		priv->reg_offset = reg_offset;
-		priv->reg_value = reg_value;
+
+		if (ret == 3) {
+			priv->reg_value = reg_value;
+			ret = mwl_debugfs_reg_access(priv, true);
+			if (ret) {
+				ret = -EINVAL;
+				goto err;
+			}
+		}
+
 		ret = count;
 	}
 
