@@ -137,7 +137,7 @@ static char *cal_data_cfg = cal_file_name;
 int wmm_turbo = 1;
 
 /* EDMAC Control */
-int EDMAC_Ctrl = 0x10FF0101;
+int EDMAC_Ctrl = 0x0;
 
 struct region_code_mapping {
 	const char *alpha2;
@@ -951,9 +951,9 @@ module_param(wmm_turbo, int, 0);
 MODULE_PARM_DESC(wmm_turbo, "WMM Turbo mode 0:Disable 1:Enable");
 
 module_param(EDMAC_Ctrl, int, 0);
-MODULE_PARM_DESC(EDMAC_Ctrl, "EDMAC CFG: BIT0:2G_enbl, BIT[4:7]: 2G_Offset, " \
-                             "BIT8:5G_Enbl, BIT[12:15]:5G_offset, BIT[16:23]:Queue_lock," \
-                             "BIT28:Force_legacy_EDMAC");
+MODULE_PARM_DESC(EDMAC_Ctrl, "EDMAC CFG: BIT0:2G_enbl, BIT1:5G_enbl, " \
+                             "BIT[4:11]: 2G_Offset, BIT[12:19]:5G_offset, " \
+                             "BIT[20:27]:Queue_lock, BIT28:Dsbl_RTS");
 
 MODULE_DESCRIPTION(MWL_DESC);
 MODULE_VERSION(MWL_DRV_VERSION);
