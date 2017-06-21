@@ -175,7 +175,6 @@
 #define EDMAC_5G_THRESHOLD_OFFSET_SHIFT		0xC
 #define EDMAC_QLOCK_BITMAP_MASK			0x0FF00000
 #define EDMAC_QLOCK_BITMAP_SHIFT		0x14
-#define EDMAC_DSBL_RTS                          0x10000000
 
 enum {
 	WL_DISABLE = 0,
@@ -386,7 +385,6 @@ struct hostcmd_cmd_edmac_ctrl {
 	__le16 ed_ctrl_5g;
 	__le16 ed_offset_5g;
 	__le16 ed_bitmap_txq_lock;
-	__le16 ed_dsbl_rts;
 } __packed;
 
 /* HOSTCMD_CMD_MEM_ADDR_ACCESS */

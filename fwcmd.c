@@ -277,8 +277,6 @@ int mwl_fwcmd_config_EDMACCtrl(struct ieee80211_hw *hw, int EDMAC_Ctrl)
 						>> EDMAC_5G_THRESHOLD_OFFSET_SHIFT);
 	pcmd->ed_bitmap_txq_lock = cpu_to_le16((EDMAC_Ctrl & EDMAC_QLOCK_BITMAP_MASK)
 						>> EDMAC_QLOCK_BITMAP_SHIFT);
-	if (EDMAC_Ctrl & EDMAC_DSBL_RTS)
-        	pcmd->ed_dsbl_rts = cpu_to_le16(1);
 
 	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_EDMAC_CTRL)) {
 		mutex_unlock(&priv->fwcmd_mutex);
