@@ -108,6 +108,8 @@ char *mwl_fwcmd_get_cmd_string(unsigned short cmd)
 		{ HOSTCMD_CMD_802_11_SLOT_TIME, "SetSlotTime" },
 		{ HOSTCMD_CMD_EDMAC_CTRL, "EdMac Control" },
 		{ HOSTCMD_CMD_DUMP_OTP_DATA, "DumpOtpData" },
+		{ HOSTCMD_CMD_SET_PRE_SCAN, "SetPreScan" },
+		{ HOSTCMD_CMD_SET_POST_SCAN, "SetPostScan" },
 	};
 
 	max_entries = ARRAY_SIZE(cmds);
@@ -3698,5 +3700,53 @@ int mwl_fwcmd_dump_otp_data(struct ieee80211_hw *hw)
 
 	mutex_unlock(&priv->fwcmd_mutex);
 
+	return 0;
+}
+
+int mwl_fwcmd_set_pre_scan(struct ieee80211_hw *hw)
+{
+	struct hostcmd_cmd_pre_scan *pcmd;
+	struct mwl_priv *priv = hw->priv;
+
+	pcmd = (struct hostcmd_cmd_pre_scan*)&priv->pcmd_buf[
+		INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
+
+	mutex_lock(&priv->fwcmd_mutex);
+
+	memset(pcmd, 0x00, sizeof(*pcmd));
+	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_PRE_SCAN);
+	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
+
+	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_SET_PRE_SCAN)) {
+		mutex_unlock(&priv->fwcmd_mutex);
+		wiphy_err(hw->wiphy, "failed execution\n");
+		return -EIO;
+	}
+
+	mutex_unlock(&priv->fwcmd_mutex);
+	return 0;
+}
+
+int mwl_fwcmd_set_post_scan(struct ieee80211_hw *hw)
+{
+	struct hostcmd_cmd_post_scan *pcmd;
+	struct mwl_priv *priv = hw->priv;
+
+	pcmd = (struct hostcmd_cmd_post_scan*)&priv->pcmd_buf[
+		INTF_CMDHEADER_LEN(priv->if_ops.inttf_head_len)];
+
+	mutex_lock(&priv->fwcmd_mutex);
+
+	memset(pcmd, 0x00, sizeof(*pcmd));
+	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_SET_POST_SCAN);
+	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
+
+	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_SET_POST_SCAN)) {
+		mutex_unlock(&priv->fwcmd_mutex);
+		wiphy_err(hw->wiphy, "failed execution\n");
+		return -EIO;
+	}
+
+	mutex_unlock(&priv->fwcmd_mutex);
 	return 0;
 }

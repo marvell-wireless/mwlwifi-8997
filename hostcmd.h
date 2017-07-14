@@ -34,6 +34,10 @@
 #define HOSTCMD_CMD_802_11_PS_MODE              0x0021
 #define HOSTCMD_CMD_BROADCAST_SSID_ENABLE       0x0050 /* per-vif */
 #define HOSTCMD_CMD_SET_CFG                     0x008f
+
+#define HOSTCMD_CMD_SET_PRE_SCAN              0x0107
+#define HOSTCMD_CMD_SET_POST_SCAN             0x0108
+
 #define HOSTCMD_CMD_SET_RF_CHANNEL              0x010a
 #define HOSTCMD_CMD_SET_AID                     0x010d /* per-vif */
 #define HOSTCMD_CMD_SET_INFRA_MODE              0x010e /* per-vif */
@@ -1075,6 +1079,16 @@ struct hostcmd_cmd_quiet_mode {
 } __packed;
 
 struct hostcmd_cmd_dump_otp_data {
+	struct hostcmd_header cmd_hdr;
+	u8 pload[0];
+} __packed;
+
+struct hostcmd_cmd_pre_scan {
+	struct hostcmd_header cmd_hdr;
+	u8 pload[0];
+} __packed;
+
+struct hostcmd_cmd_post_scan {
 	struct hostcmd_header cmd_hdr;
 	u8 pload[0];
 } __packed;
