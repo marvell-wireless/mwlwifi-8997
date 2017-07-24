@@ -9,6 +9,7 @@ mwlwifi_comm-objs		+= rx.o
 mwlwifi_comm-objs		+= isr.o
 mwlwifi_comm-$(CONFIG_THERMAL)	+= thermal.o
 mwlwifi_comm-$(CONFIG_DEBUG_FS)	+= debugfs.o
+mwlwifi_comm-$(CONFIG_NL80211_TESTMODE)	+= testmode.o
 ifeq (1, $(BUILD_MFG))
 mwlwifi_comm-objs += mfg.o
 endif

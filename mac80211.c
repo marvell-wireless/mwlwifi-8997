@@ -22,6 +22,7 @@
 #include "fwcmd.h"
 #include "tx.h"
 #include "main.h"
+#include "testmode.h"
 
 #define MWL_DRV_NAME        KBUILD_MODNAME
 
@@ -1062,5 +1063,5 @@ const struct ieee80211_ops mwl_mac80211_ops = {
 
 	.set_antenna		= mwl_mac80211_set_ant,
 	.get_antenna		= mwl_mac80211_get_ant,
-
+	CFG80211_TESTMODE_CMD(mwl_mac80211_testmode_cmd)
 };
