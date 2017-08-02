@@ -32,6 +32,7 @@
 #define HOSTCMD_CMD_802_11_TX_POWER             0x001f
 #define HOSTCMD_CMD_802_11_RF_ANTENNA           0x0020
 #define HOSTCMD_CMD_802_11_PS_MODE              0x0021
+#define HOSTCMD_CMD_802_11_DPD                  0x0022
 #define HOSTCMD_CMD_BROADCAST_SSID_ENABLE       0x0050 /* per-vif */
 #define HOSTCMD_CMD_SET_CFG                     0x008f
 
@@ -335,6 +336,12 @@ struct hostcmd_cmd_802_11_get_stat {
 	__le32 rx_errors;
 	__le32 rx_rts_count;
 	__le32 tx_cts_count;
+} __packed;
+
+/* HOSTCMD_CMD_802_11_DPD */
+struct hostcmd_cmd_dpd_training {
+	struct hostcmd_header cmd_hdr;
+	__le32 enable;
 } __packed;
 
 /* HOSTCMD_CMD_MAC_REG_ACCESS */

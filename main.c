@@ -776,6 +776,9 @@ static int mwl_wl_init(struct mwl_priv *priv)
 
 	mwl_fwcmd_rf_antenna(hw, WL_ANTENNATYPE_RX, priv->antenna_rx);
 
+	/* DPD training has to be done after configuring tx and rx antennas */
+	mwl_fwcmd_dpd_training(hw);
+
 	hw->wiphy->interface_modes = 0;
 	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_AP);
 	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_STATION);
