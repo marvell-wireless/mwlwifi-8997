@@ -68,6 +68,7 @@ char *mwl_fwcmd_get_cmd_string(unsigned short cmd)
 		{ HOSTCMD_CMD_802_11_RF_ANTENNA, "80211RfAntenna" },
 		{ HOSTCMD_CMD_BROADCAST_SSID_ENABLE, "broadcast_ssid_enable" },
 		{ HOSTCMD_CMD_SET_RF_CHANNEL, "SetRfChannel" },
+		{ HOSTCMD_CMD_802_11_DPD, "DPDTraining"},
 		{ HOSTCMD_CMD_SET_AID, "SetAid" },
 		{ HOSTCMD_CMD_SET_INFRA_MODE, "SetInfraMode" },
 		{ HOSTCMD_CMD_802_11_RTS_THSD, "80211RtsThreshold" },
@@ -1256,6 +1257,33 @@ int mwl_fwcmd_get_stat(struct ieee80211_hw *hw,
 
 	return 0;
 }
+
+int mwl_fwcmd_dpd_training(struct ieee80211_hw *hw)
+{
+	struct mwl_priv *priv = hw->priv;
+	struct hostcmd_cmd_dpd_training *pcmd;
+
+	pcmd = (struct hostcmd_cmd_dpd_training *)&priv->pcmd_buf[0];
+
+	mutex_lock(&priv->fwcmd_mutex);
+
+	memset(pcmd, 0x00, sizeof(*pcmd));
+	pcmd->cmd_hdr.cmd = cpu_to_le16(HOSTCMD_CMD_802_11_DPD);
+	pcmd->cmd_hdr.len = cpu_to_le16(sizeof(*pcmd));
+
+	pcmd->enable = cpu_to_le16(1);
+
+	if (mwl_fwcmd_exec_cmd(priv, HOSTCMD_CMD_802_11_DPD)) {
+		mutex_unlock(&priv->fwcmd_mutex);
+		wiphy_err(hw->wiphy, "DPD training failed\n");
+		return -EIO;
+	}
+
+	mutex_unlock(&priv->fwcmd_mutex);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mwl_fwcmd_dpd_training);
 
 int mwl_fwcmd_reg_mac(struct ieee80211_hw *hw, u8 flag, u32 reg, u32 *val)
 {
