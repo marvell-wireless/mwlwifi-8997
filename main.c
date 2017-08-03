@@ -589,7 +589,7 @@ static void remain_on_channel_expire(unsigned long data)
 		ieee80211_remain_on_channel_expired(hw);
 }
 
-static void timer_routine(unsigned long data)
+void timer_routine(unsigned long data)
 {
 	struct mwl_priv *priv = (struct mwl_priv *)data;
 	struct mwl_ampdu_stream *stream;
